@@ -1,3 +1,4 @@
+import ServiceManagement
 import SwiftUI
 import ScrollbackCore
 
@@ -18,6 +19,8 @@ struct MenuBarGlance: View {
     let model: AppModel
     let peerStatus: PeerStatus
     @Environment(\.openWindow) private var openWindow
+    @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var loginError: String?
 
     var body: some View {
         let today = model.today
@@ -38,6 +41,13 @@ struct MenuBarGlance: View {
                 SyncPill(status: model.status) { Task { await model.refresh() } }
                 Text(peerStatus.text).font(TypeScale.label).foregroundStyle(Palette.inkMuted)
             }
+            Toggle("Open at login", isOn: $opensAtLogin)
+                .toggleStyle(.checkbox)
+                .font(TypeScale.label)
+                .onChange(of: opensAtLogin) { _, enabled in setOpensAtLogin(enabled) }
+            if let loginError {
+                Text(loginError).font(TypeScale.label).foregroundStyle(Palette.critical)
+            }
             HStack {
                 Button("Open Scrollback") {
                     openWindow(id: WindowID.main)
@@ -52,5 +62,15 @@ struct MenuBarGlance: View {
         .padding(Space.l)
         .frame(width: 300)
         .background(Palette.surface)
+    }
+
+    private func setOpensAtLogin(_ enabled: Bool) {
+        do {
+            if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            loginError = nil
+        } catch {
+            loginError = "Couldn't change login item: \(error.localizedDescription)"
+            opensAtLogin = SMAppService.mainApp.status == .enabled
+        }
     }
 }
