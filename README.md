@@ -7,7 +7,7 @@ See exactly what you did on your iPhone and Mac, minute by minute. Ask "what was
 macOS already records which app is in front, for this Mac and for any iPhone that syncs Screen Time ("Share Across Devices"). That record lives in Apple's Biome store:
 
 ```
-~/Library/Biome/streams/restricted/App.InFocus/local/          this Mac
+~/Library/Biome/streams/restricted/ScreenTime.AppUsage/local/  this Mac (idle time already removed)
 ~/Library/Biome/streams/restricted/App.InFocus/remote/<uuid>/  your iPhone
 ~/Library/Biome/sync/sync.db                                   which uuid is which device
 ```
@@ -42,4 +42,3 @@ The Mac and iPhone share a 32-byte key (`~/Library/Application Support/Scrollbac
 
 - iPhone data appears once Apple syncs it to the Mac, usually within minutes but sometimes hours.
 - Away from home Wi-Fi, the phone shows its last synced copy.
-- Mac idle time with an app still in front counts as use. The iPhone's lock screen ends sessions correctly.
