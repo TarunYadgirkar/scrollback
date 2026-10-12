@@ -50,3 +50,37 @@ import Testing
         #expect(throws: SEGB.ReadError.truncated) { try SEGB.records(in: bytes) }
     }
 }
+
+@Suite struct ScreenTimeTests {
+    static func payload(_ bundle: String, _ date: Date, isStart: Bool) -> [UInt8] {
+        let id = Array(bundle.utf8)
+        return [0x08, isStart ? 1 : 0, 0x11] + withUnsafeBytes(of: date.timeIntervalSince1970.bitPattern.littleEndian, Array.init)
+            + [0x1A, UInt8(id.count)] + id + [0x28, 0x01]
+    }
+
+    @Test func decodesUnixTimestampsAndIdleEnds() throws {
+        let start = try #require(FocusEvent(screenTimePayload: Self.payload("com.apple.Terminal", .at(1, 47, 21, day: 12), isStart: true)))
+        let end = try #require(FocusEvent(screenTimePayload: Self.payload("com.apple.Terminal", .at(1, 48, 10, day: 12), isStart: false)))
+
+        #expect(start.date == .at(1, 47, 21, day: 12))
+        #expect(start.isStart && !end.isStart)
+        let sessions = Sessionizer.sessions(from: [start, end], device: .mac)
+        #expect(sessions.map(\.duration) == [49])
+    }
+
+    @Test func replaceDropsStaleRowsInWindow() async throws {
+        let url = FileManager.default.temporaryDirectory.appending(path: "scrollback-\(UUID()).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = try SessionStore(url: url)
+        let inflated = Session(device: .mac, bundleID: "com.apple.Terminal", start: .at(1, 47, day: 12), end: .at(9, 3, day: 12), reason: nil)
+        let phone = Session(device: .iphone, bundleID: "com.burbn.instagram", start: .at(2, 0, day: 12), end: .at(2, 10, day: 12), reason: nil)
+        try await store.upsert([inflated, phone])
+
+        let corrected = Session(device: .mac, bundleID: "com.apple.Terminal", start: .at(1, 47, day: 12), end: .at(1, 48, day: 12), reason: nil)
+        try await store.replace(device: .mac, in: DateInterval(start: .at(0, 0, day: 12), end: .at(12, 0, day: 12)), with: [corrected])
+
+        let all = try await store.sessions(overlapping: DateInterval(start: .at(0, 0, day: 12), end: .at(23, 0, day: 12)))
+        #expect(all.count == 2)
+        #expect(all.first { $0.device == .mac }?.end == .at(1, 48, day: 12))
+    }
+}

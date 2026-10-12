@@ -10,6 +10,14 @@ public struct BiomeSource: Sendable {
 
     public struct Result: Sendable {
         public let sessions: [Session]
+
+        /// Window each device's sessions span, so stored history there can be replaced wholesale.
+        public func coverage(for device: DeviceKind) -> DateInterval? {
+            let mine = sessions.filter { $0.device == device }
+            guard let start = mine.map(\.start).min(), let end = mine.map(\.end).max() else { return nil }
+            return DateInterval(start: start, end: end)
+        }
+
         /// Files or databases that couldn't be read. Ingest continues without them.
         public let warnings: [String]
     }
@@ -23,13 +31,14 @@ public struct BiomeSource: Sendable {
     }
 
     var streamURL: URL { root.appending(path: "streams/restricted/App.InFocus") }
+    var screenTimeURL: URL { root.appending(path: "streams/restricted/ScreenTime.AppUsage/local") }
 
     public func load() throws -> Result {
         let local = streamURL.appending(path: "local")
         guard (try? FileManager.default.contentsOfDirectory(atPath: local.path)) != nil else { throw Failure.needsFullDiskAccess }
 
         var warnings: [String] = []
-        var sessions = readStream(local, device: .mac, warnings: &warnings)
+        var sessions = readMac(fallback: local, warnings: &warnings)
         do {
             let devices = try remoteDevices()
             if devices.isEmpty { warnings.append("No iPhone found in Biome sync. Check that Screen Time's Share Across Devices is on.") }
@@ -42,12 +51,25 @@ public struct BiomeSource: Sendable {
         return Result(sessions: sessions, warnings: warnings)
     }
 
-    private func readStream(_ directory: URL, device: DeviceKind, warnings: inout [String]) -> [Session] {
+    /// Screen Time's stream drops idle time; App.InFocus keeps an app "in front" all night if you walk away.
+    private func readMac(fallback: URL, warnings: inout [String]) -> [Session] {
+        let screenTime = readStream(screenTimeURL, device: .mac, decode: FocusEvent.decodeScreenTime, warnings: &warnings)
+        if !screenTime.isEmpty { return screenTime }
+        warnings.append("Screen Time's usage stream is empty, so Mac time may include idle stretches.")
+        return readStream(fallback, device: .mac, warnings: &warnings)
+    }
+
+    private func readStream(
+        _ directory: URL,
+        device: DeviceKind,
+        decode: ([UInt8]) throws -> [FocusEvent] = FocusEvent.decode,
+        warnings: inout [String]
+    ) -> [Session] {
         let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
         var events: [FocusEvent] = []
         for file in files where file.lastPathComponent.allSatisfy(\.isNumber) {
             do {
-                events += try FocusEvent.decode(segment: [UInt8](Data(contentsOf: file)))
+                events += try decode([UInt8](Data(contentsOf: file)))
             } catch {
                 warnings.append("Skipped \(directory.lastPathComponent)/\(file.lastPathComponent): \(error)")
             }
