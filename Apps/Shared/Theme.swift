@@ -53,7 +53,11 @@ enum TypeScale {
     static let base: CGFloat = 13
     #endif
 
+    #if os(iOS)
+    static let readout = Font.system(size: base * 1.6, weight: .heavy).width(.expanded)
+    #else
     static let readout = Font.system(size: base * 2, weight: .heavy).width(.expanded)
+    #endif
     static let readoutSmall = Font.system(size: base * 1.25, weight: .bold).width(.expanded)
     static let title = Font.system(size: base * 1.15, weight: .semibold)
     static let body = Font.system(size: base)
