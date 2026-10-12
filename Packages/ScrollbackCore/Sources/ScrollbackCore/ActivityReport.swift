@@ -49,7 +49,11 @@ public struct ActivityReport: Sendable {
     /// Compact plain-text version for the language model. Short sessions are
     /// folded into totals so the log stays inside the on-device context window.
     public func promptText(maxLogLines: Int = 60) -> String {
-        var lines = ["Window: \(Format.spokenTime(window.start)) to \(Format.spokenTime(window.end))"]
+        let combined = DeviceKind.allCases.reduce(0) { $0 + total(on: $1) }
+        var lines = [
+            "Window: \(Format.spokenTime(window.start)) to \(Format.spokenTime(window.end))",
+            "Combined screen time across devices: \(Format.duration(combined))",
+        ]
         for device in DeviceKind.allCases {
             let apps = apps(on: device)
             guard !apps.isEmpty else {

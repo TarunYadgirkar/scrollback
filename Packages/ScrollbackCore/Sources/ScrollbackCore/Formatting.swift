@@ -4,6 +4,7 @@ public enum Format {
     /// 47m · 1h 12m · 38s
     public static func duration(_ t: TimeInterval) -> String {
         let total = Int(t.rounded())
+        if total == 0 { return "0m" }
         let h = total / 3600, m = (total % 3600) / 60, s = total % 60
         if h > 0 { return m > 0 ? "\(h)h \(m)m" : "\(h)h" }
         if m > 0 { return "\(m)m" }
@@ -35,7 +36,7 @@ public enum Format {
     public static func spokenTime(_ d: Date) -> String {
         let day = d.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
         let time = d.formatted(Date.FormatStyle().hour(.defaultDigits(amPM: .abbreviated)).minute().locale(Locale(identifier: "en_US_POSIX")))
-        return "\(day), \(time.replacingOccurrences(of: " ", with: "").lowercased())"
+        return "\(day), \(time.filter { !$0.isWhitespace }.lowercased())"
     }
 
     public static func machineTime(_ d: Date) -> String { machine.string(from: d) }

@@ -1,0 +1,62 @@
+name: Scrollback
+options:
+  bundleIdPrefix: com.tarunyadgirkar
+  deploymentTarget:
+    macOS: "26.0"
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 5AKJYZ7USP
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+packages:
+  ScrollbackCore:
+    path: Packages/ScrollbackCore
+targets:
+  ScrollbackMac:
+    type: application
+    platform: macOS
+    sources: [Apps/Shared, Apps/Mac]
+    dependencies:
+      - package: ScrollbackCore
+        product: ScrollbackCore
+    info:
+      path: Apps/Mac/Info.plist
+      properties:
+        CFBundleDisplayName: Scrollback
+        LSApplicationCategoryType: public.app-category.productivity
+        NSLocalNetworkUsageDescription: Scrollback sends your usage history to the Scrollback app on your iPhone.
+        NSBonjourServices: [_scrollback._tcp]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback.mac
+        PRODUCT_NAME: Scrollback
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
+  ScrollbackiOS:
+    type: application
+    platform: iOS
+    sources: [Apps/Shared, Apps/iOS]
+    dependencies:
+      - package: ScrollbackCore
+        product: ScrollbackCore
+    info:
+      path: Apps/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: Scrollback
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSLocalNetworkUsageDescription: Scrollback looks for your Mac on this Wi-Fi to fetch your usage history.
+        NSBonjourServices: [_scrollback._tcp]
+        ScrollbackPeerKey: $(SCROLLBACK_PEER_KEY)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback
+        PRODUCT_NAME: Scrollback
+        TARGETED_DEVICE_FAMILY: "1"
+        SCROLLBACK_PEER_KEY: ""

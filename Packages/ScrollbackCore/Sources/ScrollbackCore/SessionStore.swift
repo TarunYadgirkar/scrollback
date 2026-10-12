@@ -54,6 +54,14 @@ public actor SessionStore {
         )
     }
 
+    public func sessions(endingAfter date: Date) throws -> [Session] {
+        try db.query(
+            "SELECT id, device, bundle_id, start, end, reason FROM sessions WHERE end >= ? ORDER BY start",
+            [.real(date.timeIntervalSince1970)],
+            map: Self.session(from:)
+        )
+    }
+
     public func unsynced(limit: Int = 500) throws -> [Session] {
         try db.query(
             "SELECT id, device, bundle_id, start, end, reason FROM sessions WHERE synced = 0 ORDER BY start LIMIT ?",
