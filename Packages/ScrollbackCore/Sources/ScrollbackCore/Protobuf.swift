@@ -30,7 +30,9 @@ struct ProtoMessage: Sendable {
         switch wireType {
         case 0: return .varint(try reader.varint())
         case 1: return .fixed64(try reader.uint64())
-        case 2: return .bytes(try reader.take(Int(try reader.varint())))
+        case 2:
+            guard let length = Int(exactly: try reader.varint()) else { throw ProtoError.truncated }
+            return .bytes(try reader.take(length))
         case 5: return .fixed32(try reader.uint32())
         default: throw ProtoError.unsupportedWireType(wireType)
         }
@@ -77,7 +79,7 @@ struct ByteReader {
     }
 
     mutating func take(_ count: Int) throws -> [UInt8] {
-        guard count >= 0, offset + count <= bytes.count else { throw ProtoError.truncated }
+        guard count >= 0, count <= bytes.count - offset else { throw ProtoError.truncated }
         defer { offset += count }
         return Array(bytes[offset..<offset + count])
     }

@@ -11,9 +11,11 @@ func day(from arg: String?) -> Date {
     case nil, "today": return today
     case "yesterday": return calendar.date(byAdding: .day, value: -1, to: today)!
     case let s?:
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: s) ?? today
+        guard let date = Format.parseMachineTime("\(s) 00:00") else {
+            FileHandle.standardError.write(Data("Unrecognized day \(s), use today, yesterday, or YYYY-MM-DD\n".utf8))
+            exit(2)
+        }
+        return date
     }
 }
 
@@ -23,9 +25,16 @@ func window(on day: Date, range: String?) -> DateInterval {
     }
     func time(_ s: Substring) -> Date {
         let parts = s.split(separator: ":").compactMap { Int($0) }
-        return calendar.date(bySettingHour: parts[0], minute: parts.count > 1 ? parts[1] : 0, second: 0, of: day)!
+        guard let h = parts.first, (0...24).contains(h) else {
+            FileHandle.standardError.write(Data("Unrecognized time \(s), use HH:MM\n".utf8))
+            exit(2)
+        }
+        return day.addingTimeInterval(TimeInterval(h * 3600 + (parts.count > 1 ? parts[1] : 0) * 60))
     }
-    return DateInterval(start: time(range[..<dash]), end: time(range[range.index(after: dash)...]))
+    let from = time(range[..<dash])
+    var to = time(range[range.index(after: dash)...])
+    if to <= from { to = to.addingTimeInterval(86_400) }
+    return DateInterval(start: from, end: to)
 }
 
 func clock(_ d: Date) -> String { d.formatted(Date.VerbatimFormatStyle(format: "\(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits):\(second: .twoDigits)", timeZone: .current, calendar: .current)) }
@@ -35,9 +44,19 @@ func dur(_ t: TimeInterval) -> String {
 }
 
 let store = try SessionStore(url: SessionStore.defaultURL())
-let ingested = try BiomeSource().loadSessions()
+let result = try BiomeSource().load()
+result.warnings.forEach { print("warning: \($0)") }
+let ingested = result.sessions
 let added = try await store.upsert(ingested)
 print("ingested \(ingested.count) sessions (\(added) new) · store holds \(try await store.count())")
+
+if args.first == "ask" {
+    let question = args.dropFirst().joined(separator: " ")
+    let answer = try await Asker(store: store).ask(question)
+    print("\nQ: \(question)\nA: \(answer.text)")
+    for w in answer.windows { print("   looked at \(Format.machineTime(w.start)) → \(Format.machineTime(w.end))") }
+    exit(0)
+}
 
 let dayArg = args.first { !$0.contains(":") }
 let rangeArg = args.first { $0.contains(":") }

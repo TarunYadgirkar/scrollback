@@ -42,7 +42,7 @@ public enum SEGB {
             let end = Int(try entry.uint32())
             let state = try entry.uint32()
             let timestamp = Double(bitPattern: try entry.uint64())
-            if state == RecordState.unallocated.rawValue { continue }
+            guard state == RecordState.live.rawValue || state == RecordState.deleted.rawValue else { continue }
 
             let payloadStart = headerSize + recordStart + recordPrefixSize
             let payloadEnd = headerSize + end

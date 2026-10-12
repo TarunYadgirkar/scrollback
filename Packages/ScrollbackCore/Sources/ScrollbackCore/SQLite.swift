@@ -38,7 +38,10 @@ final class SQLiteDatabase {
             throw SQLiteError(description: "\(path): \(message)")
         }
         handle = db
+        sqlite3_busy_timeout(db, Self.busyTimeoutMs)
     }
+
+    static let busyTimeoutMs: Int32 = 5_000
 
     deinit { sqlite3_close(handle) }
 
@@ -65,7 +68,7 @@ final class SQLiteDatabase {
     }
 
     func transaction(_ body: () throws -> Void) throws {
-        try execute("BEGIN")
+        try execute("BEGIN IMMEDIATE")
         do {
             try body()
             try execute("COMMIT")
