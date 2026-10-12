@@ -59,4 +59,3 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback
         PRODUCT_NAME: Scrollback
         TARGETED_DEVICE_FAMILY: "1"
-        SCROLLBACK_PEER_KEY: ""

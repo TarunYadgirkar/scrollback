@@ -21,13 +21,17 @@ public final class PeerServer: Sendable {
         }
     }
 
-    static let requestTimeout: Duration = .seconds(10)
+    static let requestTimeout: Duration = .seconds(3)
     static let connectionLifetime: TimeInterval = 60
+    static let maxConcurrentConnections = 4
 
     private let store: SessionStore
     private let key: SymmetricKey
     private let onStatusChange: @Sendable (Status) -> Void
     private let listener = Mutex<NWListener?>(nil)
+    private let inFlight = Mutex(0)
+    /// Auth tags seen inside the clock-skew window; a repeat is a replayed request.
+    private let seenAuth = Mutex<[String: Date]>([:])
 
     public init(store: SessionStore, key: SymmetricKey, onStatusChange: @escaping @Sendable (Status) -> Void = { _ in }) {
         self.store = store
@@ -72,11 +76,27 @@ public final class PeerServer: Sendable {
     }
 
     private func accept(_ connection: NWConnection) {
+        let admitted = inFlight.withLock { count in
+            guard count < Self.maxConcurrentConnections else { return false }
+            count += 1
+            return true
+        }
+        guard admitted else { return connection.cancel() }
         connection.start(queue: PeerProtocol.queue)
         PeerProtocol.queue.asyncAfter(deadline: .now() + Self.connectionLifetime) { connection.cancel() }
         Task {
             await serve(connection)
             connection.cancel()
+            inFlight.withLock { $0 -= 1 }
+        }
+    }
+
+    private func isFirstUse(of request: PeerRequest, now: Date = .now) -> Bool {
+        seenAuth.withLock { seen in
+            seen = seen.filter { now.timeIntervalSince($0.value) <= PeerProtocol.clockSkewTolerance * 2 }
+            guard seen[request.auth] == nil else { return false }
+            seen[request.auth] = now
+            return true
         }
     }
 
@@ -103,7 +123,8 @@ public final class PeerServer: Sendable {
         }
         guard let body,
               let request = try? JSONDecoder().decode(PeerRequest.self, from: body),
-              request.verify(key: key)
+              request.verify(key: key),
+              isFirstUse(of: request)
         else { return nil }
         return request
     }
