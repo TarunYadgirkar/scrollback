@@ -46,6 +46,26 @@ public actor SessionStore {
         return try count() - before
     }
 
+    /// Swaps every stored session for `device` that starts inside `window` for `sessions`.
+    /// Used when a better source re-derives a stretch of history, so stale rows don't linger beside new ones.
+    @discardableResult
+    public func replace(device: DeviceKind, in window: DateInterval, with sessions: [Session]) throws -> Int {
+        let before = try count()
+        try db.transaction {
+            try db.run(
+                "DELETE FROM sessions WHERE device = ? AND start >= ? AND start <= ?",
+                [.text(device.rawValue), .real(window.start.timeIntervalSince1970), .real(window.end.timeIntervalSince1970)]
+            )
+            for s in sessions {
+                try db.run("""
+                    INSERT INTO sessions (id, device, bundle_id, start, end, reason, synced) VALUES (?, ?, ?, ?, ?, ?, 0)
+                    ON CONFLICT(id) DO UPDATE SET end = excluded.end, reason = excluded.reason, synced = 0
+                    """, Self.values(for: s))
+            }
+        }
+        return try count() - before
+    }
+
     public func sessions(overlapping window: DateInterval) throws -> [Session] {
         try db.query(
             "SELECT id, device, bundle_id, start, end, reason FROM sessions WHERE start < ? AND end > ? ORDER BY start",

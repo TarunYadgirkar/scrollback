@@ -47,8 +47,11 @@ let store = try SessionStore(url: SessionStore.defaultURL())
 let result = try BiomeSource().load()
 result.warnings.forEach { print("warning: \($0)") }
 let ingested = result.sessions
-let added = try await store.upsert(ingested)
-print("ingested \(ingested.count) sessions (\(added) new) · store holds \(try await store.count())")
+var added = try await store.upsert(ingested.filter { $0.device == .iphone })
+if let window = result.coverage(for: .mac) {
+    added += try await store.replace(device: .mac, in: window, with: ingested.filter { $0.device == .mac })
+}
+print("ingested \(ingested.count) sessions · store holds \(try await store.count()) (\(added >= 0 ? "+" : "")\(added))")
 
 if args.first == "ask" {
     let question = args.dropFirst().joined(separator: " ")

@@ -81,4 +81,25 @@ public struct FocusEvent: Sendable, Equatable {
     public static func decode(segment bytes: [UInt8]) throws -> [FocusEvent] {
         try SEGB.records(in: bytes).filter(\.isLive).compactMap { FocusEvent(payload: $0.payload) }
     }
+
+    /// ScreenTime.AppUsage records: same start/end idea as App.InFocus, but Apple
+    /// ends the session when the Mac goes idle, and timestamps are Unix seconds.
+    enum ScreenTimeField {
+        static let isStart = 1
+        static let timestamp = 2
+        static let bundleID = 3
+    }
+
+    init?(screenTimePayload payload: [UInt8]) {
+        guard let message = try? ProtoMessage(payload),
+              let bundleID = message.string(ScreenTimeField.bundleID),
+              let timestamp = message.double(ScreenTimeField.timestamp),
+              let startFlag = message.varint(ScreenTimeField.isStart)
+        else { return nil }
+        self.init(bundleID: bundleID, date: Date(timeIntervalSince1970: timestamp), isStart: startFlag == 1, reason: nil)
+    }
+
+    public static func decodeScreenTime(segment bytes: [UInt8]) throws -> [FocusEvent] {
+        try SEGB.records(in: bytes).filter(\.isLive).compactMap { FocusEvent(screenTimePayload: $0.payload) }
+    }
 }
