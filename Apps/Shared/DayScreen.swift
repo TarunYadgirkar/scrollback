@@ -37,7 +37,7 @@ struct DayScreen: View {
             DayHeader(model: model)
             AskBar(model: model)
             RecapStrip(report: model.report, device: model.device)
-            if let lag = model.iPhoneLag { FreshnessNote(through: lag) }
+            if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
             ActivityHeader(model: model)
         }
         .animation(Motion.quick, value: model.askState)

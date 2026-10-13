@@ -137,3 +137,34 @@ import Testing
         #expect(stretches.isEmpty)
     }
 }
+
+@Suite struct LiveLogTests {
+    @Test func pairsEventsAfterCutoffAndKeepsOpenAppRunning() {
+        let events = [
+            start("com.burbn.instagram", .at(18, 0)), end("com.burbn.instagram", .at(18, 20)),
+            start("com.burbn.instagram", .at(19, 0)), end("com.burbn.instagram", .at(19, 30)),
+            start("com.atebits.Tweetie2", .at(19, 31)),
+        ]
+        let sessions = LiveLog.sessions(from: events, after: .at(18, 30), now: .at(19, 40))
+
+        #expect(sessions.map(\.bundleID) == ["com.burbn.instagram", "com.atebits.Tweetie2"])
+        #expect(sessions.last?.end == .at(19, 40))
+    }
+
+    @Test func forgetsAnOpenAppAfterTwoHours() {
+        let sessions = LiveLog.sessions(from: [start("com.burbn.instagram", .at(12, 0))], after: .at(0, 0), now: .at(15, 0))
+        #expect(sessions.isEmpty)
+    }
+
+    @Test func storeRoundTripsLiveEvents() async throws {
+        let url = FileManager.default.temporaryDirectory.appending(path: "scrollback-\(UUID()).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = try SessionStore(url: url)
+        try await store.appendLiveEvent(start("com.burbn.instagram", .at(19, 0)))
+        try await store.appendLiveEvent(end("com.burbn.instagram", .at(19, 5)))
+
+        let events = try await store.liveEvents(after: .at(18, 0))
+        #expect(events.count == 2)
+        #expect(events.first?.isStart == true)
+    }
+}
