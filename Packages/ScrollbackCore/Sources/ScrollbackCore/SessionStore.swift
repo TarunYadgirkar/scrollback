@@ -21,6 +21,12 @@ public actor SessionStore {
             );
             CREATE INDEX IF NOT EXISTS sessions_start ON sessions(start);
             CREATE INDEX IF NOT EXISTS sessions_unsynced ON sessions(synced) WHERE synced = 0;
+            CREATE TABLE IF NOT EXISTS live_events (
+                bundle_id TEXT NOT NULL,
+                at REAL NOT NULL,
+                is_start INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS live_events_at ON live_events(at);
             """)
     }
 
@@ -64,6 +70,22 @@ public actor SessionStore {
             }
         }
         return try count() - before
+    }
+
+    /// Records an open/close the moment it happens on the phone (from a Shortcuts automation),
+    /// long before Apple's own record reaches the Mac.
+    public func appendLiveEvent(_ event: FocusEvent) throws {
+        try db.run(
+            "INSERT INTO live_events (bundle_id, at, is_start) VALUES (?, ?, ?)",
+            [.text(event.bundleID), .real(event.date.timeIntervalSince1970), .int(event.isStart ? 1 : 0)]
+        )
+        try db.run("DELETE FROM live_events WHERE at < ?", [.real(event.date.addingTimeInterval(-LiveLog.retention).timeIntervalSince1970)])
+    }
+
+    public func liveEvents(after date: Date) throws -> [FocusEvent] {
+        try db.query("SELECT bundle_id, at, is_start FROM live_events WHERE at > ? ORDER BY at", [.real(date.timeIntervalSince1970)]) { row in
+            row.text(0).map { FocusEvent(bundleID: $0, date: Date(timeIntervalSince1970: row.real(1)), isStart: row.int(2) == 1, reason: nil) }
+        }
     }
 
     public func sessions(overlapping window: DateInterval) throws -> [Session] {

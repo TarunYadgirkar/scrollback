@@ -51,6 +51,8 @@ final class AppModel {
     private(set) var earliestDay: Date?
     /// Newest data each device has delivered. iPhone data arrives via Apple's sync, often hours late.
     private(set) var dataThrough: [DeviceKind: Date] = [:]
+    /// Sessions logged on the phone by Shortcuts automations, newer than Apple's record.
+    private(set) var live: [Session] = []
     var question = ""
     var selection: Selection?
     var focusWindow: DateInterval?
@@ -81,6 +83,8 @@ final class AppModel {
     static let staleAfter: TimeInterval = 30 * 60
 
     /// When the iPhone's data stops short of now on today's view, the time it stops at.
+    var isTrackingLive: Bool { !live.isEmpty }
+
     var iPhoneLag: Date? {
         guard isToday, device == .iphone, let through = dataThrough[.iphone],
               Date.now.timeIntervalSince(through) > Self.staleAfter
@@ -101,17 +105,25 @@ final class AppModel {
     }
 
     func reload() async {
-        let window = Self.window(for: day)
-        let sessions = (try? await store.sessions(overlapping: window)) ?? []
-        report = ActivityReport(window: window, sessions: sessions)
-        let todayWindow = Self.window(for: Calendar.current.startOfDay(for: .now))
-        today = window == todayWindow ? report : ActivityReport(window: todayWindow, sessions: (try? await store.sessions(overlapping: todayWindow)) ?? [])
-        earliestDay = (try? await store.earliestStart()).map { Calendar.current.startOfDay(for: $0) }
         var through: [DeviceKind: Date] = [:]
         for device in DeviceKind.allCases {
             through[device] = try? await store.latestEnd(for: device)
         }
         dataThrough = through
+        let cutoff = through[.iphone] ?? .distantPast
+        live = LiveLog.sessions(from: (try? await store.liveEvents(after: cutoff)) ?? [], after: cutoff)
+
+        let window = Self.window(for: day)
+        report = ActivityReport(window: window, sessions: await sessions(in: window))
+        let todayWindow = Self.window(for: Calendar.current.startOfDay(for: .now))
+        today = window == todayWindow ? report : ActivityReport(window: todayWindow, sessions: await sessions(in: todayWindow))
+        earliestDay = (try? await store.earliestStart()).map { Calendar.current.startOfDay(for: $0) }
+    }
+
+    /// Apple's record, plus anything logged live on the phone after where that record stops.
+    private func sessions(in window: DateInterval) async -> [Session] {
+        let stored = (try? await store.sessions(overlapping: window)) ?? []
+        return stored + live.filter { $0.start < window.end && $0.end > window.start }
     }
 
     func shift(days: Int) async {
