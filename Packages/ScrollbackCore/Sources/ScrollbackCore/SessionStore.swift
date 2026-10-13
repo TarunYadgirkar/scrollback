@@ -104,6 +104,12 @@ public actor SessionStore {
         }.first
     }
 
+    public func latestEnd(for device: DeviceKind) throws -> Date? {
+        try db.query("SELECT MAX(end) FROM sessions WHERE device = ?", [.text(device.rawValue)]) { row in
+            row.real(0) > 0 ? Date(timeIntervalSince1970: row.real(0)) : nil
+        }.first
+    }
+
     public func earliestStart() throws -> Date? {
         try db.query("SELECT MIN(start) FROM sessions") { row in
             row.real(0) > 0 ? Date(timeIntervalSince1970: row.real(0)) : nil

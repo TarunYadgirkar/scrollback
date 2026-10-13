@@ -43,12 +43,37 @@ struct AskBar: View {
         #endif
     }
 
+    static let suggestions = ["What did I do last night?", "When did I stop scrolling?", "How much social today?"]
+
+    private var suggestions: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Space.s) {
+                ForEach(Self.suggestions, id: \.self) { text in
+                    Button { Task { await model.ask(text) } } label: {
+                        Text(text)
+                            .font(TypeScale.label)
+                            .foregroundStyle(Palette.ink)
+                            .padding(.horizontal, Space.m)
+                            .padding(.vertical, Space.xs + Space.xxs)
+                            .background(Palette.raised, in: Capsule())
+                            .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+                    }
+                    .buttonStyle(PressScale())
+                }
+            }
+            .padding(.vertical, Space.xxs)
+        }
+        .scrollIndicators(.never)
+    }
+
     @ViewBuilder private var answer: some View {
         switch model.askState {
         case .answered(let text):
             AnswerCard(text: text, isError: false) { model.dismissAnswer() }
         case .failed(let message):
             AnswerCard(text: message, isError: true) { model.dismissAnswer() }
+        case .idle where Asker.isAvailable && model.question.isEmpty:
+            suggestions
         case .idle where !Asker.isAvailable:
             Text("Ask needs Apple Intelligence. Turn it on in System Settings, then reopen Scrollback.")
                 .font(TypeScale.label).foregroundStyle(Palette.inkMuted)
