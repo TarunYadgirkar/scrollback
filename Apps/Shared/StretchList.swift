@@ -9,9 +9,7 @@ struct StretchList<Header: View>: View {
     @State private var expanded: Set<String> = []
 
     private var stretches: [Stretch] {
-        model.deviceFilter.devices
-            .flatMap { model.report.stretches(on: $0) }
-            .sorted { $0.start > $1.start }
+        model.report.stretches(on: model.device).sorted { $0.start > $1.start }
     }
 
     var body: some View {
@@ -24,7 +22,6 @@ struct StretchList<Header: View>: View {
                         StretchRow(
                             stretch: stretch,
                             binge: model.report.binge(overlapping: stretch),
-                            showsDevice: model.deviceFilter == .both,
                             isExpanded: expanded.contains(stretch.id),
                             isFocused: isFocused(stretch)
                         ) { toggle(stretch) }
@@ -52,7 +49,7 @@ struct StretchList<Header: View>: View {
     }
 
     private var emptyDetail: String {
-        guard model.deviceFilter.devices.contains(.iphone), model.isToday else {
+        guard model.device == .iphone, model.isToday else {
             return "No app use longer than a few seconds on this day."
         }
         return "Your iPhone's activity reaches your Mac through Apple's sync, which can run a few hours behind."
@@ -75,7 +72,6 @@ private struct StretchRow: View {
 
     let stretch: Stretch
     let binge: Binge?
-    let showsDevice: Bool
     let isExpanded: Bool
     let isFocused: Bool
     let onToggle: () -> Void
@@ -106,9 +102,6 @@ private struct StretchRow: View {
                 Text("\(stretch.start.shortClock) – \(stretch.end.shortClock)")
                     .font(TypeScale.mono)
                     .foregroundStyle(Palette.inkMuted)
-                if showsDevice {
-                    Text(stretch.device.label).font(TypeScale.label).foregroundStyle(Palette.inkFaint)
-                }
                 Spacer()
                 if let binge {
                     Text("Binge \(Format.duration(binge.span))")

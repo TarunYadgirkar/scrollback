@@ -9,9 +9,7 @@ struct Inspector: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
                 BingeList(model: model)
-                ForEach(DeviceKind.allCases, id: \.self) { device in
-                    TopApps(device: device, apps: model.report.apps(on: device))
-                }
+                TopApps(device: model.device, apps: model.report.apps(on: model.device))
             }
             .padding(Space.l)
         }
@@ -22,14 +20,16 @@ struct Inspector: View {
 struct BingeList: View {
     let model: AppModel
 
+    private var binges: [Binge] { model.report.binges.filter { $0.device == model.device } }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            SectionLabel(text: "Binges", detail: model.report.binges.isEmpty ? nil : "\(model.report.binges.count)")
-            if model.report.binges.isEmpty {
+            SectionLabel(text: "Binges", detail: binges.isEmpty ? nil : "\(binges.count)")
+            if binges.isEmpty {
                 Text("No social-app runs over 5 minutes this day.")
                     .font(TypeScale.label).foregroundStyle(Palette.inkMuted)
             }
-            ForEach(model.report.binges.reversed()) { binge in
+            ForEach(binges.reversed()) { binge in
                 Button {
                     model.selection = .binge(binge)
                     Task { await model.focus(on: DateInterval(start: binge.start, end: binge.end)) }
@@ -76,7 +76,7 @@ struct TopApps: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            SectionLabel(text: device.label, detail: Format.duration(apps.reduce(0) { $0 + $1.time }))
+            SectionLabel(text: "Top apps", detail: Format.duration(apps.reduce(0) { $0 + $1.time }))
             if apps.isEmpty {
                 Text("No usage recorded.").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
             }

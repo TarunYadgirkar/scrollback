@@ -1,9 +1,10 @@
 import SwiftUI
 import ScrollbackCore
 
-/// The day in four numbers. Social time and binges are the only signal-colored values.
+/// The selected device's day in a few numbers. Social time and binges are the only signal-colored values.
 struct RecapStrip: View {
     let report: ActivityReport
+    let device: DeviceKind
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -12,18 +13,23 @@ struct RecapStrip: View {
         }
     }
 
+    private var binges: [Binge] { report.binges.filter { $0.device == device } }
+    private var stretches: [Stretch] { report.stretches(on: device) }
+
     @ViewBuilder private var readouts: some View {
-        Readout(label: "iPhone", value: Format.duration(report.total(on: .iphone)))
-        Readout(label: "Social on iPhone", value: Format.duration(report.socialTime(on: .iphone)), isSignal: true)
-        if let longest = report.longestBinge {
+        Readout(label: "Screen time", value: Format.duration(report.total(on: device)))
+        Readout(label: "Social apps", value: Format.duration(report.socialTime(on: device)), isSignal: report.socialTime(on: device) > 0)
+        if let longest = binges.max(by: { $0.span < $1.span }) {
             Readout(label: "Longest binge", value: Format.duration(longest.span), detail: longest.start.shortClock, isSignal: true)
+        } else if let longest = stretches.max(by: { $0.span < $1.span }) {
+            Readout(label: "Longest stretch", value: Format.duration(longest.span), detail: longest.start.shortClock)
         } else {
             Readout(label: "Longest binge", value: "None")
         }
-        if report.unlocksBeforeSocial > 0 {
+        if device == .iphone, report.unlocksBeforeSocial > 0 {
             Readout(label: "Got past Opal", value: "\(report.unlocksBeforeSocial)×")
         } else {
-            Readout(label: "Mac", value: Format.duration(report.total(on: .mac)))
+            Readout(label: device == .iphone ? "Pickups" : "Sittings", value: "\(stretches.count)")
         }
     }
 }
