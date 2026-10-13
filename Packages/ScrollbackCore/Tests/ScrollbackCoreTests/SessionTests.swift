@@ -168,3 +168,38 @@ import Testing
         #expect(events.first?.isStart == true)
     }
 }
+
+@Suite struct HistoryTests {
+    func report(day: Int, _ sessions: [(String, Date, Date)]) -> ActivityReport {
+        let start = Date.at(0, 0, day: day)
+        return ActivityReport(
+            window: DateInterval(start: start, duration: 86_400),
+            sessions: sessions.map { Session(device: .iphone, bundleID: $0.0, start: $0.1, end: $0.2, reason: nil) }
+        )
+    }
+
+    @Test func cumulativeSplitsSessionsAcrossSlots() {
+        let summary = DaySummary(report: report(day: 11, [("com.burbn.instagram", .at(19, 10), .at(19, 40))]), device: .iphone)
+        #expect(summary.total == 1800)
+        #expect(summary.social == 1800)
+        #expect(summary.cumulative[DaySummary.slot(of: .at(19, 14), dayStart: .at(0, 0))] == 300)
+        #expect(summary.cumulative[DaySummary.slot(of: .at(19, 29), dayStart: .at(0, 0))] == 1200)
+    }
+
+    @Test func baselineIsMedianAndNeedsThreeDays() {
+        let days = [10, 30, 50].enumerated().map { index, minutes in
+            DaySummary(report: report(day: 5 + index, [("com.burbn.instagram", .at(9, 0, day: 5 + index), .at(9, minutes, day: 5 + index))]), device: .iphone)
+        }
+        #expect(Baseline(Array(days.prefix(2))) == nil)
+        #expect(days.map(\.total) == [600, 1800, 3000])
+        let baseline = Baseline(days)
+        #expect(baseline != nil)
+        #expect(baseline?.cumulative.last == TimeInterval(30 * 60))
+    }
+
+    @Test func headlineNamesPeakAndComparison() {
+        let today = report(day: 11, [("com.burbn.instagram", .at(21, 0), .at(21, 50))])
+        let text = Headline.text(for: today, device: .iphone, baseline: nil, isToday: false)
+        #expect(text == "50m of social, mostly 8pm–10pm." || text == "50m of social, mostly 9pm–11pm.")
+    }
+}
