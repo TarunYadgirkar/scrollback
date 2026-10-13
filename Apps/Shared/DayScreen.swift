@@ -33,11 +33,12 @@ struct DayScreen: View {
 
     private var top: some View {
         VStack(alignment: .leading, spacing: Space.l) {
+            DeviceSwitcher(model: model)
             DayHeader(model: model)
             AskBar(model: model)
-            RecapStrip(report: model.report)
-            ViewControls(model: model)
+            RecapStrip(report: model.report, device: model.device)
             if let lag = model.iPhoneLag { FreshnessNote(through: lag) }
+            ActivityHeader(model: model)
         }
         .animation(Motion.quick, value: model.askState)
     }
@@ -50,7 +51,7 @@ private struct TimelinePane: View {
     @State private var hoverDate: Date?
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
-    private var devices: [DeviceKind] { model.deviceFilter.devices }
+    private var devices: [DeviceKind] { [model.device] }
 
     var body: some View {
         VStack(spacing: 0) {

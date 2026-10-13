@@ -48,7 +48,7 @@ enum Motion {
 /// SF Pro Expanded for readouts, SF Pro for text, SF Mono for clock times.
 enum TypeScale {
     #if os(iOS)
-    static let base: CGFloat = 15
+    static let base: CGFloat = 16
     #else
     static let base: CGFloat = 13
     #endif

@@ -57,9 +57,9 @@ final class AppModel {
     var viewMode: ViewMode = Preference.viewMode {
         didSet { Preference.viewMode = viewMode }
     }
-    var deviceFilter: DeviceFilter = Preference.deviceFilter {
+    var device: DeviceKind = Preference.device {
         didSet {
-            Preference.deviceFilter = deviceFilter
+            Preference.device = device
             selection = nil
         }
     }
@@ -82,7 +82,7 @@ final class AppModel {
 
     /// When the iPhone's data stops short of now on today's view, the time it stops at.
     var iPhoneLag: Date? {
-        guard isToday, deviceFilter.devices.contains(.iphone), let through = dataThrough[.iphone],
+        guard isToday, device == .iphone, let through = dataThrough[.iphone],
               Date.now.timeIntervalSince(through) > Self.staleAfter
         else { return nil }
         return through
@@ -164,14 +164,12 @@ final class AppModel {
     }
 }
 
-/// Per-device view preferences. The phone opens on its own lane as a list; the Mac shows everything.
+/// View preferences. Both apps open on the iPhone, since that's where the scrolling happens.
 private enum Preference {
     #if os(iOS)
     static let defaultMode = ViewMode.list
-    static let defaultFilter = DeviceFilter.iphone
     #else
     static let defaultMode = ViewMode.timeline
-    static let defaultFilter = DeviceFilter.both
     #endif
 
     static var viewMode: ViewMode {
@@ -179,8 +177,8 @@ private enum Preference {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "viewMode") }
     }
 
-    static var deviceFilter: DeviceFilter {
-        get { UserDefaults.standard.string(forKey: "deviceFilter").flatMap(DeviceFilter.init(rawValue:)) ?? defaultFilter }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "deviceFilter") }
+    static var device: DeviceKind {
+        get { UserDefaults.standard.string(forKey: "device").flatMap(DeviceKind.init(rawValue:)) ?? .iphone }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "device") }
     }
 }
