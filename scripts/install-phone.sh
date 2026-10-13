@@ -47,8 +47,10 @@ key=$("$ROOT/scripts/peer-key.sh")
 cd "$ROOT"
 xcodegen generate --quiet
 # Passed through the environment rather than argv so the key doesn't show up in `ps`.
+# A fresh build number each install makes iOS re-index the app's Shortcuts actions.
 SCROLLBACK_PEER_KEY="$key" xcodebuild -project Scrollback.xcodeproj -scheme ScrollbackiOS -configuration Release \
-  -destination 'generic/platform=iOS' -derivedDataPath "$BUILD_DIR" -allowProvisioningUpdates -quiet build
+  -destination 'generic/platform=iOS' -derivedDataPath "$BUILD_DIR" -allowProvisioningUpdates -quiet \
+  CURRENT_PROJECT_VERSION="$(date +%Y%m%d%H%M)" build
 
 app="$BUILD_DIR/Build/Products/Release-iphoneos/Scrollback.app"
 xcrun devicectl device install app --device "$device" "$app"

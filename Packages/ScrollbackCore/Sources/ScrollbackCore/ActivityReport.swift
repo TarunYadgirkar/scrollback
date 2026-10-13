@@ -55,6 +55,22 @@ public struct ActivityReport: Sendable {
         }.count
     }
 
+    /// Each time Opal was opened right before a social app, and how much social time followed in that sitting.
+    public var opalBypasses: [(at: Date, socialAfter: TimeInterval)] {
+        let stretches = stretches(on: .iphone)
+        return zip(sessions, sessions.dropFirst()).compactMap { gate, next in
+            guard gate.bundleID == "com.withopal.opal",
+                  AppCatalog.category(for: next.bundleID) == .social,
+                  next.start.timeIntervalSince(gate.end) < 30,
+                  let stretch = stretches.first(where: { $0.sessions.contains(next) })
+            else { return nil }
+            let after = stretch.sessions
+                .filter { $0.start >= next.start && AppCatalog.category(for: $0.bundleID) == .social }
+                .reduce(0) { $0 + $1.duration }
+            return (next.start, after)
+        }
+    }
+
     /// Compact plain-text version for the language model. Short sessions are
     /// folded into totals so the log stays inside the on-device context window.
     public func promptText(maxLogLines: Int = 60) -> String {
