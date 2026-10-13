@@ -21,7 +21,7 @@ struct RecapStrip: View {
             Readout(label: "Longest binge", value: "None")
         }
         if report.unlocksBeforeSocial > 0 {
-            Readout(label: "Opal unlocks → social", value: "\(report.unlocksBeforeSocial)")
+            Readout(label: "Got past Opal", value: "\(report.unlocksBeforeSocial)×")
         } else {
             Readout(label: "Mac", value: Format.duration(report.total(on: .mac)))
         }

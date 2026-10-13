@@ -3,9 +3,6 @@ import ScrollbackCore
 
 struct DayScreen: View {
     @Bindable var model: AppModel
-    @State private var hoverDate: Date?
-    @State private var scrollPosition = ScrollPosition(edge: .top)
-    private static let leadIn: TimeInterval = 90 * 60
 
     var body: some View {
         #if os(macOS)
@@ -20,23 +17,47 @@ struct DayScreen: View {
         #endif
     }
 
-    private var main: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: Space.l) {
-                DayHeader(model: model)
-                AskBar(model: model)
-                RecapStrip(report: model.report)
+    @ViewBuilder private var main: some View {
+        switch model.viewMode {
+        case .list:
+            StretchList(model: model) { top }
+        case .timeline:
+            VStack(alignment: .leading, spacing: 0) {
+                top
+                    .padding(.horizontal, Space.l)
+                    .padding(.vertical, Space.m)
+                TimelinePane(model: model)
             }
-            .padding(.horizontal, Space.l)
-            .padding(.top, Space.m)
-            .padding(.bottom, Space.m)
-            .animation(Motion.quick, value: model.askState)
+        }
+    }
 
-            ReadoutBar(report: model.report, selection: model.selection, hoverDate: hoverDate)
+    private var top: some View {
+        VStack(alignment: .leading, spacing: Space.l) {
+            DayHeader(model: model)
+            AskBar(model: model)
+            RecapStrip(report: model.report)
+            ViewControls(model: model)
+            if let lag = model.iPhoneLag { FreshnessNote(through: lag) }
+        }
+        .animation(Motion.quick, value: model.askState)
+    }
+}
+
+private struct TimelinePane: View {
+    private static let leadIn: TimeInterval = 90 * 60
+
+    @Bindable var model: AppModel
+    @State private var hoverDate: Date?
+    @State private var scrollPosition = ScrollPosition(edge: .top)
+
+    private var devices: [DeviceKind] { model.deviceFilter.devices }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ReadoutBar(report: model.report, devices: devices, selection: model.selection, hoverDate: hoverDate)
                 .padding(.horizontal, Space.l)
-
             ScrollView {
-                RibbonView(report: model.report, focusWindow: model.focusWindow, selection: $model.selection, hoverDate: $hoverDate)
+                RibbonView(report: model.report, devices: devices, focusWindow: model.focusWindow, selection: $model.selection, hoverDate: $hoverDate)
                     .padding(.horizontal, Space.l)
                     .padding(.vertical, Space.m)
             }

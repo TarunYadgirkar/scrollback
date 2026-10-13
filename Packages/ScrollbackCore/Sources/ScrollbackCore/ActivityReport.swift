@@ -37,6 +37,15 @@ public struct ActivityReport: Sendable {
 
     public var longestBinge: Binge? { binges.max { $0.span < $1.span } }
 
+    public func stretches(on device: DeviceKind) -> [Stretch] {
+        StretchBuilder.stretches(in: sessions, device: device)
+    }
+
+    /// Whether a stretch contains (part of) a binge, for marking it in the list.
+    public func binge(overlapping stretch: Stretch) -> Binge? {
+        binges.first { $0.device == stretch.device && $0.start < stretch.end && stretch.start < $0.end }
+    }
+
     /// Times Opal (or Screen Time) was opened right before a social app.
     public var unlocksBeforeSocial: Int {
         zip(sessions, sessions.dropFirst()).filter { gate, next in

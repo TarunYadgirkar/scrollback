@@ -49,9 +49,20 @@ final class AppModel {
     private(set) var status: SyncStatus = .idle
     private(set) var askState: AskState = .idle
     private(set) var earliestDay: Date?
+    /// Newest data each device has delivered. iPhone data arrives via Apple's sync, often hours late.
+    private(set) var dataThrough: [DeviceKind: Date] = [:]
     var question = ""
     var selection: Selection?
     var focusWindow: DateInterval?
+    var viewMode: ViewMode = Preference.viewMode {
+        didSet { Preference.viewMode = viewMode }
+    }
+    var deviceFilter: DeviceFilter = Preference.deviceFilter {
+        didSet {
+            Preference.deviceFilter = deviceFilter
+            selection = nil
+        }
+    }
 
     init(store: SessionStore, provider: any UsageProvider) {
         self.store = store
@@ -66,6 +77,16 @@ final class AppModel {
     var isToday: Bool { Calendar.current.isDateInToday(day) }
     var canGoBack: Bool { earliestDay.map { day > $0 } ?? false }
     var hasData: Bool { earliestDay != nil }
+
+    static let staleAfter: TimeInterval = 30 * 60
+
+    /// When the iPhone's data stops short of now on today's view, the time it stops at.
+    var iPhoneLag: Date? {
+        guard isToday, deviceFilter.devices.contains(.iphone), let through = dataThrough[.iphone],
+              Date.now.timeIntervalSince(through) > Self.staleAfter
+        else { return nil }
+        return through
+    }
 
     func refresh() async {
         guard status != .syncing else { return }
@@ -86,6 +107,11 @@ final class AppModel {
         let todayWindow = Self.window(for: Calendar.current.startOfDay(for: .now))
         today = window == todayWindow ? report : ActivityReport(window: todayWindow, sessions: (try? await store.sessions(overlapping: todayWindow)) ?? [])
         earliestDay = (try? await store.earliestStart()).map { Calendar.current.startOfDay(for: $0) }
+        var through: [DeviceKind: Date] = [:]
+        for device in DeviceKind.allCases {
+            through[device] = try? await store.latestEnd(for: device)
+        }
+        dataThrough = through
     }
 
     func shift(days: Int) async {
@@ -115,8 +141,14 @@ final class AppModel {
         }
     }
 
+    func ask(_ suggestion: String) async {
+        question = suggestion
+        await ask()
+    }
+
     func dismissAnswer() {
         askState = .idle
+        question = ""
         focusWindow = nil
     }
 
@@ -129,5 +161,26 @@ final class AppModel {
     static func window(for day: Date) -> DateInterval {
         let end = Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
         return DateInterval(start: day, end: end)
+    }
+}
+
+/// Per-device view preferences. The phone opens on its own lane as a list; the Mac shows everything.
+private enum Preference {
+    #if os(iOS)
+    static let defaultMode = ViewMode.list
+    static let defaultFilter = DeviceFilter.iphone
+    #else
+    static let defaultMode = ViewMode.timeline
+    static let defaultFilter = DeviceFilter.both
+    #endif
+
+    static var viewMode: ViewMode {
+        get { UserDefaults.standard.string(forKey: "viewMode").flatMap(ViewMode.init(rawValue:)) ?? defaultMode }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "viewMode") }
+    }
+
+    static var deviceFilter: DeviceFilter {
+        get { UserDefaults.standard.string(forKey: "deviceFilter").flatMap(DeviceFilter.init(rawValue:)) ?? defaultFilter }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "deviceFilter") }
     }
 }

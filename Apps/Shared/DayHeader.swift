@@ -3,6 +3,7 @@ import ScrollbackCore
 
 struct DayHeader: View {
     let model: AppModel
+    @State private var isPickingDay = false
 
     var body: some View {
         HStack(spacing: Space.m) {
@@ -10,10 +11,16 @@ struct DayHeader: View {
                 stepButton("chevron.left", label: "Previous day", shortcut: .leftArrow, enabled: model.canGoBack) { await model.shift(days: -1) }
                 stepButton("chevron.right", label: "Next day", shortcut: .rightArrow, enabled: !model.isToday) { await model.shift(days: 1) }
             }
-            Text(title)
-                .font(TypeScale.title)
-                .foregroundStyle(Palette.ink)
-                .contentTransition(.numericText())
+            Button { isPickingDay = true } label: {
+                HStack(spacing: Space.xs) {
+                    Text(title).font(TypeScale.title).foregroundStyle(Palette.ink)
+                    Image(systemName: "calendar").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressScale())
+            .accessibilityLabel("\(title). Pick a day")
+            .popover(isPresented: $isPickingDay) { dayPicker }
             if !model.isToday {
                 Button { Task { await model.show(day: .now) } } label: {
                     Text("Back to today")
@@ -30,6 +37,23 @@ struct DayHeader: View {
             Spacer(minLength: Space.s)
             SyncPill(status: model.status) { Task { await model.refresh() } }
         }
+    }
+
+    private var dayPicker: some View {
+        DatePicker(
+            "Day",
+            selection: Binding(get: { model.day }, set: { day in
+                isPickingDay = false
+                Task { await model.show(day: day) }
+            }),
+            in: (model.earliestDay ?? model.day)...Date.now,
+            displayedComponents: .date
+        )
+        .datePickerStyle(.graphical)
+        .labelsHidden()
+        .padding(Space.m)
+        .frame(minWidth: 300)
+        .presentationCompactAdaptation(.popover)
     }
 
     private var title: String {

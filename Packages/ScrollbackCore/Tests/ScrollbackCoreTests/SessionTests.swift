@@ -108,3 +108,32 @@ import Testing
         #expect(found == [s])
     }
 }
+
+@Suite struct StretchTests {
+    func session(_ id: String, _ from: Date, _ to: Date, device: DeviceKind = .iphone) -> Session {
+        Session(device: device, bundleID: id, start: from, end: to, reason: nil)
+    }
+
+    @Test func chainsAnyAppsAndRanksByTime() {
+        let stretches = StretchBuilder.stretches(in: [
+            session("com.apple.MobileSMS", .at(19, 0), .at(19, 1)),
+            session("com.burbn.instagram", .at(19, 1, 30), .at(19, 30)),
+            session("com.withopal.opal", .at(19, 31), .at(19, 31, 10)),
+            session("com.burbn.instagram", .at(19, 31, 10), .at(19, 40)),
+            session("com.google.Gmail", .at(21, 0), .at(21, 5)),
+        ], device: .iphone)
+
+        #expect(stretches.count == 2)
+        #expect(stretches[0].span == 40 * 60)
+        #expect(stretches[0].apps.first?.bundleID == "com.burbn.instagram")
+        #expect(stretches[0].apps.map(\.bundleID).count == 3)
+    }
+
+    @Test func dropsGlancesAndOtherDevices() {
+        let stretches = StretchBuilder.stretches(in: [
+            session("com.apple.mobiletimer", .at(8, 0), .at(8, 0, 5)),
+            session("com.apple.Terminal", .at(9, 0), .at(10, 0), device: .mac),
+        ], device: .iphone)
+        #expect(stretches.isEmpty)
+    }
+}
