@@ -43,10 +43,12 @@ targets:
   ScrollbackiOS:
     type: application
     platform: iOS
-    sources: [Apps/Shared, Apps/iOS]
+    sources: [Apps/Shared, Apps/iOS, Apps/ScreenTimeShared]
     dependencies:
       - package: ScrollbackCore
         product: ScrollbackCore
+      - target: ScrollbackReport
+      - target: ScrollbackMonitor
     info:
       path: Apps/iOS/Info.plist
       properties:
@@ -64,3 +66,51 @@ targets:
         PRODUCT_NAME: Scrollback
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_ENTITLEMENTS: Apps/iOS/Scrollback.entitlements
+  ScrollbackReport:
+    type: extensionkit-extension
+    platform: iOS
+    sources: [Extensions/Report, Apps/ScreenTimeShared, Apps/Shared/Theme.swift]
+    dependencies:
+      - package: ScrollbackCore
+        product: ScrollbackCore
+    info:
+      path: Extensions/Report/Info.plist
+      properties:
+        CFBundleDisplayName: Scrollback Report
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        EXAppExtensionAttributes:
+          EXExtensionPointIdentifier: com.apple.deviceactivityui.report-extension
+    entitlements:
+      path: Extensions/Report/Report.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback.report
+        TARGETED_DEVICE_FAMILY: "1"
+  ScrollbackMonitor:
+    type: app-extension
+    platform: iOS
+    sources: [Extensions/Monitor, Apps/ScreenTimeShared]
+    dependencies:
+      - package: ScrollbackCore
+        product: ScrollbackCore
+    info:
+      path: Extensions/Monitor/Info.plist
+      properties:
+        CFBundleDisplayName: Scrollback Monitor
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.deviceactivity.monitor-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).Monitor
+    entitlements:
+      path: Extensions/Monitor/Monitor.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.com.example.scrollback]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback.monitor
+        TARGETED_DEVICE_FAMILY: "1"
