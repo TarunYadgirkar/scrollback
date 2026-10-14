@@ -117,6 +117,12 @@ private struct StretchRow: View {
                 Text(Format.duration(stretch.activeTime))
                     .font(TypeScale.readoutSmall)
                     .foregroundStyle(stretch.socialTime > stretch.activeTime / 2 ? Palette.signal : Palette.ink)
+                HStack(spacing: -4) {
+                    ForEach(stretch.apps.prefix(Self.topApps)) { app in
+                        AppIconView(bundleID: app.bundleID, size: 20)
+                            .overlay(RoundedRectangle(cornerRadius: 4.4).stroke(Palette.raised, lineWidth: 1.5))
+                    }
+                }
                 Text(appsLine)
                     .font(TypeScale.body)
                     .foregroundStyle(Palette.ink)
@@ -144,7 +150,7 @@ private struct StretchRow: View {
                         .font(TypeScale.monoSmall)
                         .foregroundStyle(Palette.inkMuted)
                         .frame(width: 56, alignment: .leading)
-                    Circle().fill(Palette.category(AppCatalog.category(for: session.bundleID))).frame(width: 7, height: 7)
+                    AppIconView(bundleID: session.bundleID, size: 18)
                     Text(AppCatalog.name(for: session.bundleID)).font(TypeScale.label).foregroundStyle(Palette.ink)
                     if let reason = session.reason {
                         Text(reason.label).font(TypeScale.label).foregroundStyle(Palette.inkFaint)

@@ -1,5 +1,6 @@
 @preconcurrency import DeviceActivity
 import Foundation
+@preconcurrency import ManagedSettings
 import ScrollbackCore
 import SwiftUI
 
@@ -17,6 +18,7 @@ nonisolated struct LiveSummary: Sendable {
         let bundleID: String?
         let time: TimeInterval
         let pickups: Int
+        var token: ApplicationToken?
         var id: String { bundleID ?? name }
         var category: AppCategory { bundleID.map(AppCatalog.category(for:)) ?? .other }
     }
@@ -49,7 +51,8 @@ nonisolated struct LiveSummary: Sendable {
                             name: app.localizedDisplayName ?? app.bundleIdentifier.map(AppCatalog.name(for:)) ?? "Unknown",
                             bundleID: app.bundleIdentifier,
                             time: (previous?.time ?? 0) + activity.totalActivityDuration,
-                            pickups: (previous?.pickups ?? 0) + activity.numberOfPickups
+                            pickups: (previous?.pickups ?? 0) + activity.numberOfPickups,
+                            token: app.token
                         )
                         appTotals[key] = merged
                         summary.pickups += activity.numberOfPickups
