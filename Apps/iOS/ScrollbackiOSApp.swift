@@ -31,12 +31,24 @@ struct ScrollbackiOSApp: App {
 
 struct IOSRoot: View {
     @Bindable var model: AppModel
+    @State private var access = ScreenTimeAccess()
 
     var body: some View {
-        if model.status == .needsSetup(.notPaired), !model.hasData {
-            PairingView()
-        } else {
-            DayScreen(model: model)
+        Group {
+            if !access.isApproved || !access.hasPickedApps {
+                ScrollView {
+                    ScreenTimeSetupView(access: access).padding(Space.l)
+                }
+                .background(Palette.surface)
+            } else if model.status == .needsSetup(.notPaired), !model.hasData {
+                PairingView()
+            } else {
+                DayScreen(model: model)
+            }
+        }
+        .task(id: access.isApproved) {
+            guard access.isApproved else { return }
+            await ActivityProbe.run()
         }
     }
 }

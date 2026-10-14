@@ -203,3 +203,31 @@ import Testing
         #expect(text == "50m of social, mostly 8pm–10pm." || text == "50m of social, mostly 9pm–11pm.")
     }
 }
+
+@Suite struct MilestoneTests {
+    @Test func backToBackStepsBecomeOneSitting() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(19, 0), minutes: 0),
+            Milestone(at: .at(19, 30), minutes: 5),
+            Milestone(at: .at(19, 35), minutes: 10),
+            Milestone(at: .at(19, 41), minutes: 15),
+        ], stepMinutes: 5)
+
+        #expect(sessions.count == 3)
+        #expect(sessions[0].start == .at(19, 25))
+        #expect(sessions[1].start == .at(19, 30))
+        #expect(sessions[2].start == .at(19, 35))
+        #expect(BingeDetector.binges(in: sessions).first?.span == TimeInterval(16 * 60))
+    }
+
+    @Test func ignoresRestartsWhereMinutesGoBackwards() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(23, 50), minutes: 40),
+            Milestone(at: .at(0, 0, day: 12), minutes: 0),
+            Milestone(at: .at(0, 6, day: 12), minutes: 5),
+        ], stepMinutes: 5)
+
+        #expect(sessions.count == 1)
+        #expect(sessions[0].end == .at(0, 6, day: 12))
+    }
+}
