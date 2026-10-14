@@ -111,7 +111,7 @@ final class AppModel {
         }
         dataThrough = through
         let cutoff = through[.iphone] ?? .distantPast
-        live = LiveLog.sessions(from: (try? await store.liveEvents(after: cutoff)) ?? [], after: cutoff)
+        live = await liveSessions(after: cutoff)
 
         let window = Self.window(for: day)
         report = ActivityReport(window: window, sessions: await sessions(in: window))
@@ -119,6 +119,15 @@ final class AppModel {
         today = window == todayWindow ? report : ActivityReport(window: todayWindow, sessions: await sessions(in: todayWindow))
         earliestDay = (try? await store.earliestStart()).map { Calendar.current.startOfDay(for: $0) }
     }
+
+    /// Doomscroll milestones from the Screen Time monitor, past the point Apple's detailed record reaches.
+    private func liveSessions(after cutoff: Date) async -> [Session] {
+        let lookback = cutoff.addingTimeInterval(-86_400)
+        let milestones = (try? await store.milestones(after: lookback)) ?? []
+        return MilestoneTimeline.sessions(from: milestones, stepMinutes: Self.milestoneStepMinutes).filter { $0.end > cutoff }
+    }
+
+    static let milestoneStepMinutes = 5
 
     /// Apple's record, plus anything logged live on the phone after where that record stops.
     private func sessions(in window: DateInterval) async -> [Session] {

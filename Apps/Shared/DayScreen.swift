@@ -3,6 +3,7 @@ import ScrollbackCore
 
 struct DayScreen: View {
     @Bindable var model: AppModel
+    @Environment(\.liveToday) private var liveToday
 
     var body: some View {
         #if os(macOS)
@@ -36,8 +37,12 @@ struct DayScreen: View {
             DeviceSwitcher(model: model)
             DayHeader(model: model)
             AskBar(model: model)
-            RecapStrip(report: model.report, device: model.device)
-            if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
+            if model.device == .iphone, model.isToday, let liveToday {
+                liveToday
+            } else {
+                RecapStrip(report: model.report, device: model.device)
+                if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
+            }
             ActivityHeader(model: model)
         }
         .animation(Motion.quick, value: model.askState)
@@ -90,4 +95,9 @@ private struct TimelinePane: View {
             scrollPosition.scrollTo(y: y)
         }
     }
+}
+
+extension EnvironmentValues {
+    /// The phone's live Screen Time card, when access is granted. Nil on the Mac.
+    @Entry var liveToday: AnyView?
 }
