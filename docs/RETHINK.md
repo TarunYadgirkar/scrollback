@@ -10,7 +10,7 @@ The free Personal Team couldn't use Screen Time's APIs, so every phone feature w
 | 10–17 hours of lag on iPhone data | Apple batches Biome sync to the Mac | Live card updates as you use the phone |
 | Shortcuts automations to log app opens | No background hook | **Monitor extension** wakes at every 5 minutes of doomscroll-app use |
 | Reinstall every 7 days, 3-app limit | Free provisioning | Profiles last 365 days; no app limit |
-| Opal for blocking | No ManagedSettings | Scrollback can shield apps itself (not built yet) |
+| Opal for blocking | No ManagedSettings | Unchanged by choice: Opal blocks, Scrollback explains |
 
 Verified on this Mac on 2026-10-14: Xcode issued a 365-day profile for team `YOURTEAMID` containing `com.apple.developer.family-controls`, and the app, both extensions and the App Group all sign.
 
@@ -50,7 +50,7 @@ iOS 26.4 added `DeviceActivityData.activityData(filteredBy:using:)`, which hands
 - Once the capability is in the app, iOS offers full access or nothing.
 - Outside the EU it only works in development builds. TestFlight and App Store builds fall back to plain access.
 
-Scrollback doesn't request it. The report extension plus monitor milestones cover live use without breaking Screen Time. The probe in the app (`probe.txt`) records what plain access returns; expect an error.
+
 
 ## Known platform limits (from Apple's docs and DTS forum replies)
 
@@ -62,9 +62,10 @@ Scrollback doesn't request it. The report extension plus monitor milestones cove
 
 ## Next, in order
 
-1. Run on the phone: grant access, pick apps, check the live card and `probe.txt`.
-2. Shield doomscroll apps on a schedule, with a custom block screen and "5 more minutes" (replaces Opal).
-3. A local notification at 20 minutes of continuous doomscrolling (from the monitor extension).
-4. Widgets from the App Group data.
-5. CloudKit for Mac↔phone history.
-6. TestFlight, once Apple approves Family Controls for distribution.
+1. Run on the phone: grant access, pick apps, check the live card and milestones.
+2. A local notification at 20 minutes of continuous doomscrolling (from the monitor extension).
+3. Widgets from the App Group data.
+4. CloudKit for Mac↔phone history.
+5. TestFlight, once Apple approves Family Controls for distribution.
+
+Blocking stays with Opal; Scrollback is for understanding usage, not restricting it.

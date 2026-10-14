@@ -58,10 +58,6 @@ struct IOSRoot: View {
                     .padding(Space.l)
             }
         }
-        .task(id: access.isApproved) {
-            guard access.isApproved else { return }
-            await ActivityProbe.run()
-        }
         .task(id: access.selection) {
             guard access.isApproved, access.hasPickedApps else { return }
             do {
