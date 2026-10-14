@@ -29,6 +29,8 @@ targets:
       path: Apps/Mac/Info.plist
       properties:
         CFBundleDisplayName: Scrollback
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         NSLocalNetworkUsageDescription: Scrollback sends your usage history to the Scrollback app on your iPhone.
         NSBonjourServices: [_scrollback._tcp]
@@ -49,6 +51,8 @@ targets:
       path: Apps/iOS/Info.plist
       properties:
         CFBundleDisplayName: Scrollback
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSLocalNetworkUsageDescription: Scrollback looks for your Mac on this Wi-Fi to fetch your usage history.
