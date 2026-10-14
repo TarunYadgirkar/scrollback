@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Builds the iPhone app with this Mac's sync key baked in and installs it over USB.
-# Free Apple developer accounts sign builds for 7 days; run with --if-stale from
-# launchd to reinstall only when the installed build is older than 5 days or the
-# code has changed since the last install.
+# Development profiles on the paid team last a year. Run with --if-stale from launchd
+# to reinstall only when the code changed since the last install (or the build nears expiry).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STAMP="$HOME/Library/Application Support/Scrollback/phone-installed-at"
-STALE_AFTER_SECONDS=$((5 * 24 * 3600))
+STALE_AFTER_SECONDS=$((300 * 24 * 3600))
 BUILD_DIR="$ROOT/.build/ios"
 
 commit=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)
@@ -56,4 +55,4 @@ app="$BUILD_DIR/Build/Products/Release-iphoneos/Scrollback.app"
 xcrun devicectl device install app --device "$device" "$app"
 mkdir -p "$(dirname "$STAMP")"
 echo "$(date +%s) $commit" > "$STAMP"
-echo "Installed Scrollback on your iPhone. It stays valid for 7 days; plug in again before then or let the launch agent handle it."
+echo "Installed Scrollback on your iPhone."
