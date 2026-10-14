@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Hosts the report extension's live card. The data never leaves the extension; we only size it.
 struct LiveTodayCard: View {
-    static let height: CGFloat = 520
+    static let height: CGFloat = 420
 
     var body: some View {
         let start = Calendar.current.startOfDay(for: .now)
