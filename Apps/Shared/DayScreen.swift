@@ -4,6 +4,7 @@ import ScrollbackCore
 struct DayScreen: View {
     @Bindable var model: AppModel
     @Environment(\.liveToday) private var liveToday
+    @Environment(\.hourByHour) private var hourByHour
 
     var body: some View {
         #if os(macOS)
@@ -44,6 +45,14 @@ struct DayScreen: View {
                 if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
             }
             ActivityHeader(model: model)
+            if model.device == .iphone, model.isToday, let hourByHour {
+                hourByHour
+                if model.isTrackingLive {
+                    Text("Doomscroll apps, in 5-minute steps")
+                        .font(TypeScale.label.weight(.semibold))
+                        .foregroundStyle(Palette.inkMuted)
+                }
+            }
         }
         .animation(Motion.quick, value: model.askState)
     }
@@ -100,4 +109,6 @@ private struct TimelinePane: View {
 extension EnvironmentValues {
     /// The phone's live Screen Time card, when access is granted. Nil on the Mac.
     @Entry var liveToday: AnyView?
+    /// Today's hours on the phone, newest first, from Screen Time.
+    @Entry var hourByHour: AnyView?
 }
