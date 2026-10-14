@@ -56,7 +56,6 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         UILaunchScreen: {}
-        ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSLocalNetworkUsageDescription: Scrollback looks for your Mac on this Wi-Fi to fetch your usage history.
         NSBonjourServices: [_scrollback._tcp]
