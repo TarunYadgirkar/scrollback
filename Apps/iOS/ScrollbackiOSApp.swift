@@ -46,6 +46,7 @@ struct IOSRoot: View {
             } else {
                 DayScreen(model: model)
                     .environment(\.liveToday, AnyView(LiveTodayCard()))
+                    .environment(\.hourByHour, AnyView(HourByHourCard()))
             }
         }
         .overlay(alignment: .bottom) {

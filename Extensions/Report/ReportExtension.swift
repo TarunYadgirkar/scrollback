@@ -6,6 +6,7 @@ import SwiftUI
 struct ScrollbackReportExtension: DeviceActivityReportExtension {
     var body: some DeviceActivityReportScene {
         LiveTodayScene { LiveTodayView(summary: $0) }
+        HourByHourScene { HourByHourView(report: $0) }
     }
 }
 

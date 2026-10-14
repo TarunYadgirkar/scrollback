@@ -4,6 +4,7 @@ import SwiftUI
 /// Names shared by the app and its Screen Time extensions; both sides must agree on these strings.
 extension DeviceActivityReport.Context {
     static var liveToday: Self { Self("Live today") }
+    static var hourByHour: Self { Self("Hour by hour") }
 }
 
 extension DeviceActivityName {
