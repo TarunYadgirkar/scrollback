@@ -63,3 +63,4 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback
         PRODUCT_NAME: Scrollback
         TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_ENTITLEMENTS: Apps/iOS/Scrollback.entitlements

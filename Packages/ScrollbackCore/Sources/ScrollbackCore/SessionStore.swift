@@ -31,8 +31,17 @@ public actor SessionStore {
     }
 
     public static func defaultURL() -> URL {
-        URL.applicationSupportDirectory.appending(path: "Scrollback/sessions.sqlite")
+        #if os(iOS)
+        if let shared = SharedContainer.url {
+            let url = shared.appending(path: "Library/Application Support/Scrollback/sessions.sqlite")
+            SharedContainer.moveLegacyStore(from: legacyURL, to: url)
+            return url
+        }
+        #endif
+        return legacyURL
     }
+
+    static var legacyURL: URL { URL.applicationSupportDirectory.appending(path: "Scrollback/sessions.sqlite") }
 
     /// Inserts new sessions. An existing row is only rewritten (and marked
     /// unsynced) when its end time or open reason actually changed.
