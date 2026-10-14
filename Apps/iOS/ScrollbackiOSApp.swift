@@ -32,6 +32,7 @@ struct ScrollbackiOSApp: App {
 struct IOSRoot: View {
     @Bindable var model: AppModel
     @State private var access = ScreenTimeAccess()
+    @State private var monitorError: String?
 
     var body: some View {
         Group {
@@ -44,11 +45,30 @@ struct IOSRoot: View {
                 PairingView()
             } else {
                 DayScreen(model: model)
+                    .environment(\.liveToday, AnyView(LiveTodayCard()))
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let monitorError {
+                Text(monitorError)
+                    .font(TypeScale.label)
+                    .foregroundStyle(Palette.critical)
+                    .padding(Space.m)
+                    .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.control))
+                    .padding(Space.l)
             }
         }
         .task(id: access.isApproved) {
             guard access.isApproved else { return }
             await ActivityProbe.run()
+        }
+        .task(id: access.selection) {
+            guard access.isApproved, access.hasPickedApps else { return }
+            do {
+                try await DoomscrollMonitoring.start(access.selection)
+            } catch {
+                monitorError = "Couldn't start live tracking: \(error.localizedDescription)"
+            }
         }
     }
 }
