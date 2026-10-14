@@ -26,7 +26,8 @@ nonisolated struct HourByHour: Sendable {
                             name: app.localizedDisplayName ?? app.bundleIdentifier.map(AppCatalog.name(for:)) ?? "Unknown",
                             bundleID: app.bundleIdentifier,
                             time: activity.totalActivityDuration,
-                            pickups: activity.numberOfPickups
+                            pickups: activity.numberOfPickups,
+                            token: app.token
                         ))
                     }
                 }
@@ -81,11 +82,18 @@ struct HourByHourView: View {
                 Spacer()
                 Text(Format.duration(hour.total)).font(TypeScale.readoutSmall).foregroundStyle(Palette.ink)
             }
-            Text(hour.apps.prefix(Self.appsPerHour).map { "\($0.name) \(Format.duration($0.time))" }.joined(separator: " · ")
-                 + (hour.apps.count > Self.appsPerHour ? " +\(hour.apps.count - Self.appsPerHour)" : ""))
-                .font(TypeScale.label)
-                .foregroundStyle(Palette.ink)
-                .lineLimit(1)
+            HStack(spacing: Space.m) {
+                ForEach(hour.apps.prefix(Self.appsPerHour)) { app in
+                    HStack(spacing: Space.xs) {
+                        AppTokenIcon(token: app.token, category: app.category, size: 18)
+                        Text(Format.duration(app.time)).font(TypeScale.mono).foregroundStyle(Palette.ink)
+                    }
+                }
+                if hour.apps.count > Self.appsPerHour {
+                    Text("+\(hour.apps.count - Self.appsPerHour)").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
+                }
+            }
+            .lineLimit(1)
             GeometryReader { proxy in
                 let used = max(hour.apps.reduce(0) { $0 + $1.time }, 1)
                 let usable = proxy.size.width - CGFloat(max(0, hour.apps.count - 1))

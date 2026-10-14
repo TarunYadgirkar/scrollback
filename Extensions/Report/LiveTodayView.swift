@@ -57,7 +57,8 @@ struct LiveTodayView: View {
             let longest = top.first?.time ?? 1
             ForEach(Array(top)) { app in
                 VStack(alignment: .leading, spacing: Space.xxs + 1) {
-                    HStack {
+                    HStack(spacing: Space.s) {
+                        AppTokenIcon(token: app.token, category: app.category, size: 22)
                         Text(app.name).font(TypeScale.label).foregroundStyle(Palette.ink)
                         Spacer()
                         Text("\(app.pickups)×").font(TypeScale.monoSmall).foregroundStyle(Palette.inkFaint)

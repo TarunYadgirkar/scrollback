@@ -84,6 +84,7 @@ struct TopApps: View {
             ForEach(apps.prefix(Self.limit)) { app in
                 VStack(alignment: .leading, spacing: Space.xxs + 1) {
                     HStack {
+                        AppIconView(bundleID: app.bundleID, size: 18)
                         Text(app.name).font(TypeScale.label).foregroundStyle(Palette.ink)
                         Spacer()
                         Text("\(app.opens)×").font(TypeScale.monoSmall).foregroundStyle(Palette.inkFaint)
