@@ -119,9 +119,16 @@ struct SyncPill: View {
         case .synced(let date, _): "Synced \(date.shortClock)"
         case .needsSetup(.fullDiskAccess): "Needs Full Disk Access"
         case .needsSetup(.notPaired): "Not paired with your Mac"
-        case .failed: "Sync failed"
+        case .failed: Self.failedText
         }
     }
+
+    #if os(iOS)
+    // On the phone, a failed sync almost always means the Mac isn't on the same Wi-Fi.
+    static let failedText = "Mac not nearby"
+    #else
+    static let failedText = "Sync failed"
+    #endif
 
     private var helpText: String {
         switch status {
