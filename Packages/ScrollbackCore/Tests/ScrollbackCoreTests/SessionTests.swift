@@ -129,6 +129,24 @@ import Testing
         #expect(stretches[0].apps.map(\.bundleID).count == 3)
     }
 
+    @Test func findsEveryBingeInsideAStretch() {
+        let sessions = [
+            session("com.burbn.instagram", .at(19, 42), .at(19, 42, 30)),
+            session("com.burbn.instagram", .at(19, 44), .at(19, 47, 30)),
+            session("com.google.Gmail", .at(19, 48), .at(19, 51)),
+            session("com.burbn.instagram", .at(19, 52), .at(20, 2)),
+            session("com.withopal.opal", .at(20, 3), .at(20, 5)),
+            session("com.burbn.instagram", .at(20, 5, 30), .at(20, 17)),
+        ]
+        let report = ActivityReport(window: DateInterval(start: .at(0, 0), duration: 86_400), sessions: sessions)
+        let stretch = try! #require(StretchBuilder.stretches(in: sessions, device: .iphone).first)
+
+        let binges = report.binges(overlapping: stretch)
+        let bingeTime: TimeInterval = binges.map(\.activeTime).reduce(0, +)
+        #expect(binges.count == 3)
+        #expect(bingeTime == 25.5 * 60)
+    }
+
     @Test func dropsGlancesAndOtherDevices() {
         let stretches = StretchBuilder.stretches(in: [
             session("com.apple.mobiletimer", .at(8, 0), .at(8, 0, 5)),
