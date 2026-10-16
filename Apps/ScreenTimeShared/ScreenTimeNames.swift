@@ -3,8 +3,7 @@ import SwiftUI
 
 /// Names shared by the app and its Screen Time extensions; both sides must agree on these strings.
 extension DeviceActivityReport.Context {
-    static var liveToday: Self { Self("Live today") }
-    static var hourByHour: Self { Self("Hour by hour") }
+    static var today: Self { Self("Today") }
 }
 
 extension DeviceActivityName {
@@ -25,13 +24,10 @@ enum DoomscrollLadder {
     }
 }
 
-/// Screen Time draws its cards in another process, so the app has to know their heights up front.
+/// The hour grid's fixed shape, so it's the same height at 8am and 11pm.
 enum ScreenTimeCardSize {
-    static let liveToday: CGFloat = 372
-
     static let hourColumns = 4
     static let hourRows = 24 / hourColumns
     static let hourTile: CGFloat = 72
     static let hourSpacing: CGFloat = 6
-    static let hourGrid = CGFloat(hourRows) * hourTile + CGFloat(hourRows - 1) * hourSpacing
 }

@@ -38,15 +38,6 @@ nonisolated struct HourByHour: Sendable {
     }
 }
 
-nonisolated struct HourByHourScene: DeviceActivityReportScene {
-    let context: DeviceActivityReport.Context = .hourByHour
-    let content: (HourByHour) -> HourByHourView
-
-    func makeConfiguration(representing data: DeviceActivityResults<DeviceActivityData>) async -> HourByHour {
-        await HourByHour.build(from: data)
-    }
-}
-
 /// The whole day as a 4×6 grid, so the card is the same height at 8am and 11pm.
 /// Each hour shows its total and the apps that took it; social-heavy hours read in signal pink.
 struct HourByHourView: View {
@@ -59,13 +50,15 @@ struct HourByHourView: View {
     }
 
     var body: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: ScreenTimeCardSize.hourSpacing), count: ScreenTimeCardSize.hourColumns)
-        LazyVGrid(columns: columns, spacing: ScreenTimeCardSize.hourSpacing) {
-            ForEach(0..<24, id: \.self) { index in
-                tile(index)
+        Grid(horizontalSpacing: ScreenTimeCardSize.hourSpacing, verticalSpacing: ScreenTimeCardSize.hourSpacing) {
+            ForEach(0..<ScreenTimeCardSize.hourRows, id: \.self) { row in
+                GridRow {
+                    ForEach(0..<ScreenTimeCardSize.hourColumns, id: \.self) { column in
+                        tile(row * ScreenTimeCardSize.hourColumns + column)
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private func tile(_ index: Int) -> some View {
