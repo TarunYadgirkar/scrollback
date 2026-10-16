@@ -51,7 +51,7 @@ final class AppModel {
     private(set) var earliestDay: Date?
     /// Newest data each device has delivered. iPhone data arrives via Apple's sync, often hours late.
     private(set) var dataThrough: [DeviceKind: Date] = [:]
-    /// Sessions logged on the phone by Shortcuts automations, newer than Apple's record.
+    /// Doomscroll time from the Screen Time monitor, newer than Apple's record.
     private(set) var live: [Session] = []
     var question = ""
     var selection: Selection?

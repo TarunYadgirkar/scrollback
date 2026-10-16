@@ -15,7 +15,7 @@ struct FreshnessNote: View {
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(isLive
-                    ? "Shortcuts logs the apps you set up as you open them. Everything else fills in when Apple's next batch arrives."
+                    ? "Your doomscroll apps are tracked in 5-minute steps. Everything else fills in when Apple's next batch arrives."
                     : "Apple sends it over in batches a few times a day. It'll fill in on its own.")
                     .font(TypeScale.label)
                     .foregroundStyle(Palette.inkMuted)

@@ -24,3 +24,14 @@ enum DoomscrollLadder {
         return Int(event.rawValue.dropFirst(prefix.count))
     }
 }
+
+/// Screen Time draws its cards in another process, so the app has to know their heights up front.
+enum ScreenTimeCardSize {
+    static let liveToday: CGFloat = 372
+
+    static let hourColumns = 4
+    static let hourRows = 24 / hourColumns
+    static let hourTile: CGFloat = 72
+    static let hourSpacing: CGFloat = 6
+    static let hourGrid = CGFloat(hourRows) * hourTile + CGFloat(hourRows - 1) * hourSpacing
+}
