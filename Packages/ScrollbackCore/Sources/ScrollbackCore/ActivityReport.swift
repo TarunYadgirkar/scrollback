@@ -42,8 +42,9 @@ public struct ActivityReport: Sendable {
     }
 
     /// Whether a stretch contains (part of) a binge, for marking it in the list.
-    public func binge(overlapping stretch: Stretch) -> Binge? {
-        binges.first { $0.device == stretch.device && $0.start < stretch.end && stretch.start < $0.end }
+    /// A stretch can hold several binges with short breaks between them; all of them count.
+    public func binges(overlapping stretch: Stretch) -> [Binge] {
+        binges.filter { $0.device == stretch.device && $0.start < stretch.end && stretch.start < $0.end }
     }
 
     /// Times Opal (or Screen Time) was opened right before a social app.

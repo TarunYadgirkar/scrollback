@@ -21,7 +21,7 @@ struct StretchList<Header: View>: View {
                     ForEach(stretches) { stretch in
                         StretchRow(
                             stretch: stretch,
-                            binge: model.report.binge(overlapping: stretch),
+                            bingeTime: model.report.binges(overlapping: stretch).reduce(0) { $0 + $1.activeTime },
                             isExpanded: expanded.contains(stretch.id),
                             isFocused: isFocused(stretch)
                         ) { toggle(stretch) }
@@ -71,7 +71,8 @@ private struct StretchRow: View {
     static let topApps = 3
 
     let stretch: Stretch
-    let binge: Binge?
+    /// Social time spent in binges during this stretch; zero when there were none.
+    let bingeTime: TimeInterval
     let isExpanded: Bool
     let isFocused: Bool
     let onToggle: () -> Void
@@ -85,7 +86,7 @@ private struct StretchRow: View {
         }
         .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.card))
         .overlay(alignment: .leading) {
-            if binge != nil {
+            if bingeTime > 0 {
                 UnevenRoundedRectangle(topLeadingRadius: Radius.card, bottomLeadingRadius: Radius.card)
                     .fill(Palette.signal)
                     .frame(width: 4)
@@ -103,8 +104,8 @@ private struct StretchRow: View {
                     .font(TypeScale.mono)
                     .foregroundStyle(Palette.inkMuted)
                 Spacer()
-                if let binge {
-                    Text("Binge \(Format.duration(binge.span))")
+                if bingeTime > 0 {
+                    Text("Binge \(Format.duration(bingeTime))")
                         .font(TypeScale.label.weight(.semibold))
                         .foregroundStyle(Palette.signal)
                 }
@@ -131,7 +132,7 @@ private struct StretchRow: View {
             ShareBar(apps: stretch.apps, total: stretch.activeTime)
         }
         .padding(Space.m)
-        .padding(.leading, binge == nil ? 0 : Space.xs)
+        .padding(.leading, bingeTime > 0 ? Space.xs : 0)
         .contentShape(Rectangle())
     }
 
@@ -162,7 +163,7 @@ private struct StretchRow: View {
             }
         }
         .padding([.horizontal, .bottom], Space.m)
-        .padding(.leading, binge == nil ? 0 : Space.xs)
+        .padding(.leading, bingeTime > 0 ? Space.xs : 0)
         .transition(.opacity)
     }
 }
