@@ -14,9 +14,17 @@ final class Monitor: DeviceActivityMonitor {
         record(minutes: minutes)
     }
 
+    /// iOS can suspend the extension as soon as a callback returns, so wait for the write.
     private func record(minutes: Int) {
         guard let store = try? SessionStore(url: SessionStore.defaultURL()) else { return }
         let milestone = Milestone(at: .now, minutes: minutes)
-        Task { try? await store.appendMilestone(milestone) }
+        let written = DispatchSemaphore(value: 0)
+        Task {
+            try? await store.appendMilestone(milestone)
+            written.signal()
+        }
+        _ = written.wait(timeout: .now() + Self.writeTimeout)
     }
+
+    static let writeTimeout: DispatchTimeInterval = .seconds(3)
 }
