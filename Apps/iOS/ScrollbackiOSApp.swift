@@ -68,7 +68,9 @@ struct IOSRoot: View {
                     .padding(Space.l)
             }
         }
-        .task(id: access.selection) {
+        .task { await access.followStatus() }
+        // Re-runs when approval arrives after launch, not only when the picked apps change.
+        .task(id: access.isApproved ? access.selection : nil) {
             guard access.isApproved, access.hasPickedApps else { return }
             do {
                 try await DoomscrollMonitoring.startIfNeeded(access.selection)
