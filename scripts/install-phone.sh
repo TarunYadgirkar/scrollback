@@ -18,23 +18,7 @@ if [[ "${1:-}" == "--if-stale" && -f "$STAMP" ]]; then
   fi
 fi
 
-devices_json=$(mktemp)
-trap 'rm -f "$devices_json"' EXIT
-xcrun devicectl list devices --json-output "$devices_json" >/dev/null 2>&1 || true
-device=$(python3 -I - "$devices_json" <<'PY'
-import json, sys
-try:
-    devices = json.load(open(sys.argv[1]))["result"]["devices"]
-except Exception:
-    devices = []
-for d in devices:
-    hw = d.get("hardwareProperties", {})
-    if hw.get("reality") == "physical" and hw.get("deviceType") == "iPhone" \
-            and d.get("connectionProperties", {}).get("tunnelState") != "unavailable":
-        print(hw.get("udid") or d["identifier"])
-        break
-PY
-)
+device=$("$ROOT/scripts/phone-udid.sh")
 if [[ -z "$device" ]]; then
   [[ "${1:-}" == "--if-stale" ]] && exit 0
   echo "No iPhone connected. Plug it in with a cable, unlock it, and trust this Mac." >&2

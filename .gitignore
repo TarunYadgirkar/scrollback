@@ -6,3 +6,4 @@ xcuserdata/
 .DS_Store
 Config/Secrets.xcconfig
 supabase/.temp/
+assets/generated/ui-test/
