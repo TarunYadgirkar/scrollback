@@ -6,18 +6,24 @@ struct RibbonLayout {
     #if os(iOS)
     static let pointsPerMinute: CGFloat = 2
     static let gutter: CGFloat = 40
-    static let margin: CGFloat = 112
+    static let margin: CGFloat = 128
+    /// Binge label lines (duration, apps, start time), spaced for the phone's larger type.
+    static let bracketAppsOffset: CGFloat = 26
+    static let bracketClockOffset: CGFloat = 44
+    static let bracketLabelHeight: CGFloat = 60
     #else
     static let pointsPerMinute: CGFloat = 2
     static let gutter: CGFloat = 48
     static let margin: CGFloat = 176
+    static let bracketAppsOffset: CGFloat = 22
+    static let bracketClockOffset: CGFloat = 36
+    static let bracketLabelHeight: CGFloat = 46
     #endif
     static let laneGap: CGFloat = 6
     static let minBlockHeight: CGFloat = 1.5
     static let labelMinHeight: CGFloat = 16
     static let bracketInset: CGFloat = 10
     static let bracketCap: CGFloat = 6
-    static let bracketLabelHeight: CGFloat = 46
 
     let window: DateInterval
     let width: CGFloat
