@@ -44,14 +44,16 @@ struct DayScreen: View {
                 RecapStrip(report: model.report, device: model.device)
                 if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
             }
-            ActivityHeader(model: model)
             if model.device == .iphone, model.isToday, let hourByHour {
+                Text("By hour").font(TypeScale.title).foregroundStyle(Palette.ink)
                 hourByHour
-                if model.isTrackingLive {
-                    Text("Doomscroll apps, in 5-minute steps")
-                        .font(TypeScale.label.weight(.semibold))
-                        .foregroundStyle(Palette.inkMuted)
-                }
+            }
+            ActivityHeader(model: model)
+            if model.device == .iphone, model.isToday, model.isTrackingLive {
+                Text("Doomscroll apps show up live in 5-minute steps. Everything else fills in from your Mac.")
+                    .font(TypeScale.label)
+                    .foregroundStyle(Palette.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .animation(Motion.quick, value: model.askState)

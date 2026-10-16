@@ -6,13 +6,6 @@ import SwiftUI
 
 /// Today's usage as Apple's Screen Time reports it, boiled down for one card.
 nonisolated struct LiveSummary: Sendable {
-    struct Hour: Identifiable, Sendable {
-        let start: Date
-        let social: TimeInterval
-        let other: TimeInterval
-        var id: Date { start }
-    }
-
     struct App: Identifiable, Sendable {
         let name: String
         let bundleID: String?
@@ -26,7 +19,6 @@ nonisolated struct LiveSummary: Sendable {
     var total: TimeInterval = 0
     var social: TimeInterval = 0
     var pickups = 0
-    var hours: [Hour] = []
     var apps: [App] = []
     var longest: DateInterval?
     var updated: Date?
@@ -61,7 +53,6 @@ nonisolated struct LiveSummary: Sendable {
                 }
                 summary.total += segment.totalActivityDuration
                 summary.social += hourSocial
-                summary.hours.append(Hour(start: segment.dateInterval.start, social: hourSocial, other: max(0, segment.totalActivityDuration - hourSocial)))
             }
         }
         summary.apps = appTotals.values.sorted { $0.time > $1.time }
