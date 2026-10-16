@@ -124,10 +124,8 @@ final class AppModel {
     private func liveSessions(after cutoff: Date) async -> [Session] {
         let lookback = cutoff.addingTimeInterval(-86_400)
         let milestones = (try? await store.milestones(after: lookback)) ?? []
-        return MilestoneTimeline.sessions(from: milestones, stepMinutes: Self.milestoneStepMinutes).filter { $0.end > cutoff }
+        return MilestoneTimeline.sessions(from: milestones).filter { $0.end > cutoff }
     }
-
-    static let milestoneStepMinutes = 5
 
     /// Apple's record, plus anything logged live on the phone after where that record stops.
     private func sessions(in window: DateInterval) async -> [Session] {

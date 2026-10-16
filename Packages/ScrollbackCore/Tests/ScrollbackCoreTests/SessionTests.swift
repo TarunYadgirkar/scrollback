@@ -229,7 +229,7 @@ import Testing
             Milestone(at: .at(19, 30), minutes: 5),
             Milestone(at: .at(19, 35), minutes: 10),
             Milestone(at: .at(19, 41), minutes: 15),
-        ], stepMinutes: 5)
+        ])
 
         #expect(sessions.count == 3)
         #expect(sessions[0].start == .at(19, 25))
@@ -243,9 +243,23 @@ import Testing
             Milestone(at: .at(23, 50), minutes: 40),
             Milestone(at: .at(0, 0, day: 12), minutes: 0),
             Milestone(at: .at(0, 6, day: 12), minutes: 5),
-        ], stepMinutes: 5)
+        ])
 
         #expect(sessions.count == 1)
         #expect(sessions[0].end == .at(0, 6, day: 12))
+    }
+
+    @Test func coarseLateStepsKeepTheirFullMinutes() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(20, 0), minutes: 240),
+            Milestone(at: .at(20, 15), minutes: 255),
+            Milestone(at: .at(22, 0), minutes: 270),
+        ])
+
+        let total: TimeInterval = sessions.map(\.duration).reduce(0, +)
+        #expect(sessions.count == 2)
+        #expect(sessions[0].start == .at(20, 0))
+        #expect(sessions[1].start == .at(21, 45))
+        #expect(total == TimeInterval(30 * 60))
     }
 }
