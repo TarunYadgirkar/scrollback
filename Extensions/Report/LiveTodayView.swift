@@ -18,7 +18,7 @@ struct LiveTodayView: View {
             apps
         }
         .padding(Space.l)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.card))
     }
 

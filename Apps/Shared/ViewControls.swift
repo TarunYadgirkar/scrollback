@@ -16,7 +16,7 @@ extension DeviceKind {
 /// The first choice on screen: whose day you're looking at. Everything below follows it.
 struct DeviceSwitcher: View {
     @Bindable var model: AppModel
-    @Environment(\.liveToday) private var liveToday
+    @Environment(\.screenTimeToday) private var screenTimeToday
 
     var body: some View {
         HStack(spacing: Space.xs) {
@@ -31,7 +31,7 @@ struct DeviceSwitcher: View {
     /// The phone's real total lives inside Screen Time's card, which the app can't read,
     /// so don't show a partial number beside it.
     private func subtitle(for device: DeviceKind) -> String {
-        if device == .iphone, model.isToday, liveToday != nil { return "Live today" }
+        if device == .iphone, model.isToday, screenTimeToday != nil { return "Live today" }
         return Format.duration(model.report.total(on: device)) + (model.isToday ? " today" : "")
     }
 

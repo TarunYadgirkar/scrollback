@@ -54,8 +54,7 @@ struct IOSRoot: View {
                 PairingView()
             } else {
                 DayScreen(model: model)
-                    .environment(\.liveToday, AnyView(LiveTodayCard()))
-                    .environment(\.hourByHour, AnyView(HourByHourCard()))
+                    .environment(\.screenTimeToday, AnyView(ScreenTimeTodayCard()))
             }
         }
         .overlay(alignment: .bottom) {
