@@ -3,10 +3,11 @@ import FamilyControls
 import Foundation
 import ScrollbackCore
 
-/// Asks Screen Time to wake the monitor extension at every 5-minute step of doomscroll-app use.
+/// Asks Screen Time to wake the monitor extension at every step of doomscroll-app use.
 @MainActor
 enum DoomscrollMonitoring {
-    static let monitoredKey = "monitoredSelection"
+    /// Versioned with the ladder, so a new ladder restarts monitoring once instead of waiting for a new pick.
+    static let monitoredKey = "monitoredSelection.v2"
 
     /// Restarting resets Screen Time's counters and drops the minutes toward the next step,
     /// so only restart when the picked apps changed or monitoring isn't running.
@@ -32,8 +33,7 @@ enum DoomscrollMonitoring {
             intervalEnd: DateComponents(hour: 23, minute: 59, second: 59),
             repeats: true
         )
-        let steps = stride(from: DoomscrollLadder.stepMinutes, through: DoomscrollLadder.maxMinutes, by: DoomscrollLadder.stepMinutes)
-        let events = Dictionary(uniqueKeysWithValues: steps.map { minutes in
+        let events = Dictionary(uniqueKeysWithValues: DoomscrollLadder.steps.map { minutes in
             (DoomscrollLadder.eventName(minutes: minutes), DeviceActivityEvent(
                 applications: selection.applicationTokens,
                 categories: selection.categoryTokens,

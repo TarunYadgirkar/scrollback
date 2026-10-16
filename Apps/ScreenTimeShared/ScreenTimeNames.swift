@@ -12,9 +12,9 @@ extension DeviceActivityName {
 }
 
 enum DoomscrollLadder {
-    /// Every 5 minutes of doomscroll-app use fires one milestone, up to 4 hours a day.
-    static let stepMinutes = 5
-    static let maxMinutes = 240
+    /// A milestone every 5 minutes of doomscroll-app use for the first 4 hours, then every 15 up to 12.
+    /// Coarser late steps keep the event count low; the timeline reads minutes from each event, not a fixed step.
+    static let steps = Array(stride(from: 5, through: 240, by: 5)) + Array(stride(from: 255, through: 720, by: 15))
     static let prefix = "doom."
 
     static func eventName(minutes: Int) -> DeviceActivityEvent.Name { .init("\(prefix)\(minutes)") }
