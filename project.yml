@@ -50,6 +50,8 @@ targets:
         product: ScrollbackCore
       - target: ScrollbackReport
       - target: ScrollbackMonitor
+    scheme:
+      testTargets: [ScrollbackiOSUITests]
     info:
       path: Apps/iOS/Info.plist
       properties:
@@ -117,3 +119,17 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback.monitor
         TARGETED_DEVICE_FAMILY: "1"
+  ScrollbackiOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Apps/iOSUITests]
+    dependencies:
+      - target: ScrollbackiOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback.uitests
+        # XCTest's setUp isn't main-actor isolated; Swift 6 checks only get in the way of UI test code.
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
