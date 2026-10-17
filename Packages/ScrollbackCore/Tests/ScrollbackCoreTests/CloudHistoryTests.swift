@@ -56,6 +56,15 @@ private func tempStore() throws -> (SessionStore, URL) {
         #expect(throws: CloudHistory.Failure.unreadable) { try CloudHistory.unpack(Data("nope".utf8), version: 1) }
     }
 
+    @Test func unknownOpenReasonIsDroppedNotFatal() throws {
+        let json = Data(#"[{"id":"x","device":"iphone","bundleID":"com.burbn.instagram","start":0,"end":60,"reason":"someFutureReason"}]"#.utf8)
+        let packed = try (json as NSData).compressed(using: .lzfse) as Data
+        let unpacked = try CloudHistory.unpack(packed, version: CloudHistory.version)
+        #expect(unpacked.count == 1)
+        #expect(unpacked[0].reason == nil)
+        #expect(unpacked[0].id == "iphone|com.burbn.instagram|\(Int(Date(timeIntervalSinceReferenceDate: 0).timeIntervalSince1970))")
+    }
+
     @Test func digestTracksContentNotOrder() {
         let digest = CloudHistory.digest(of: sessions)
         #expect(digest != nil)

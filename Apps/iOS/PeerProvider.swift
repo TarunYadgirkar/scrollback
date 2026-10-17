@@ -13,8 +13,10 @@ struct PeerProvider: UsageProvider {
         var cloudWorked = false
         // iCloud first: it replaces whole days, and the Mac's live answer then lays newer rows on top.
         do {
-            added += try await CloudHistoryDownloader().pull(into: store)
-            cloudWorked = true
+            if let pulled = try await CloudHistoryDownloader().pull(into: store) {
+                added += pulled
+                cloudWorked = true
+            }
         } catch CloudSyncError.noAccount {
             // Not signed in to iCloud: Wi-Fi sync alone, as before.
         } catch {
