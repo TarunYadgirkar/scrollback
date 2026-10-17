@@ -346,6 +346,19 @@ import Testing
         #expect(run == DoomscrollNudge.Run(start: .at(19, 0), end: .at(19, 20), minutes: 20))
     }
 
+    @Test func aVeryLateCallbackDoesntSplitTheRun() {
+        // The 10-minute step came 3 minutes late, so 15 looks too early and is skipped; 20 still joins.
+        let milestones = [
+            Milestone(at: .at(19, 0), minutes: 0),
+            Milestone(at: .at(19, 5), minutes: 5),
+            Milestone(at: .at(19, 13), minutes: 10),
+            Milestone(at: .at(19, 15), minutes: 15),
+            Milestone(at: .at(19, 20), minutes: 20),
+        ]
+        let run = DoomscrollNudge.due(milestones: milestones, now: .at(19, 20), lastNudged: nil)
+        #expect(run == DoomscrollNudge.Run(start: .at(19, 0), end: .at(19, 20), minutes: 20))
+    }
+
     @Test func duplicateCallbacksDontBreakTheRun() {
         var milestones = steady(from: .at(19, 0), steps: 4)
         milestones.append(Milestone(at: .at(19, 12), minutes: 10))
