@@ -77,14 +77,17 @@ final class BasicsUITests: XCTestCase {
     }
 
     func testTimelineFitsOnScreen() {
+        // The iPhone's live day shows stretch cards instead of the ribbon, so check the ribbon on the Mac.
+        button(startingWith: "Mac").tap()
         app.buttons["Timeline"].tap()
-        XCTAssertTrue(button(startingWith: "iPhone").waitForExistence(timeout: Self.timeout))
-        XCTAssertTrue(button(startingWith: "iPhone").isHittable, "Timeline header pushed the tabs off screen")
+        XCTAssertTrue(button(startingWith: "Mac").waitForExistence(timeout: Self.timeout))
+        XCTAssertTrue(button(startingWith: "Mac").isHittable, "Timeline header pushed the tabs off screen")
         let ribbon = app.scrollViews.allElementsBoundByIndex.max { $0.frame.height < $1.frame.height }
         XCTAssertGreaterThan(ribbon?.frame.height ?? 0, 250, "Timeline has no room to show the day")
         snap("timeline")
         ribbon?.swipeUp()
         ribbon?.swipeDown()
+        button(startingWith: "iPhone").tap()
         app.buttons["List"].tap()
         XCTAssertTrue(app.staticTexts["By hour"].waitForExistence(timeout: Self.timeout))
     }
