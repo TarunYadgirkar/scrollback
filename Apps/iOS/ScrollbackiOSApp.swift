@@ -55,6 +55,7 @@ struct IOSRoot: View {
             } else {
                 DayScreen(model: model)
                     .environment(\.screenTimeToday, AnyView(ScreenTimeTodayCard()))
+                    .environment(\.doomscrollApps, AnyView(DoomscrollAppsControl(access: access)))
             }
         }
         .overlay(alignment: .bottom) {

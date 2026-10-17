@@ -13,8 +13,17 @@ enum DoomscrollMonitoring {
     /// so only restart when the picked apps changed or monitoring isn't running.
     static func startIfNeeded(_ selection: FamilyActivitySelection) async throws {
         let isRunning = DeviceActivityCenter().activities.contains(.doomscroll)
-        guard !isRunning || monitoredSelection() != selection else { return }
+        guard !isRunning || picksDiffer(monitoredSelection(), selection) else { return }
         try await start(selection)
+    }
+
+    /// Compares only the picked tokens: a selection decoded from disk and one fresh from the picker
+    /// can differ in other fields with the same apps, and that mustn't cost a restart.
+    static func picksDiffer(_ a: FamilyActivitySelection?, _ b: FamilyActivitySelection) -> Bool {
+        guard let a else { return true }
+        return a.applicationTokens != b.applicationTokens
+            || a.categoryTokens != b.categoryTokens
+            || a.webDomainTokens != b.webDomainTokens
     }
 
     private static func monitoredSelection() -> FamilyActivitySelection? {
@@ -38,7 +47,9 @@ enum DoomscrollMonitoring {
                 applications: selection.applicationTokens,
                 categories: selection.categoryTokens,
                 webDomains: selection.webDomainTokens,
-                threshold: DateComponents(hour: minutes / 60, minute: minutes % 60)
+                threshold: DateComponents(hour: minutes / 60, minute: minutes % 60),
+                // Already the default since iOS 17.4; spelled out because the 0 marker below relies on it.
+                includesPastActivity: false
             ))
         })
         // Thresholds count from now, so mark the restart: milestone minutes are relative to it.
