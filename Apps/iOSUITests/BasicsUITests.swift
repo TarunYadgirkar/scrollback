@@ -9,20 +9,14 @@ final class BasicsUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         // Argument-domain defaults override the remembered choices, so every test starts on the iPhone list.
-        app.launchArguments = ["-viewMode", "list", "-device", "iphone"]
+        // -uiTesting keeps the notification prompt from covering the screen mid-test.
+        app.launchArguments = ["-viewMode", "list", "-device", "iphone", "-uiTesting"]
         app.launch()
-        allowNotificationsIfAsked()
         XCTAssertTrue(activityTitle.waitForExistence(timeout: Self.timeout), "Main screen never appeared (stuck on setup?)")
         snap("launched")
     }
 
     private var activityTitle: XCUIElement { app.staticTexts["Activity"] }
-
-    /// The first launch after install asks to send the 20-minute nudge; that system alert would block every tap.
-    private func allowNotificationsIfAsked() {
-        let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow"]
-        if allow.waitForExistence(timeout: 2) { allow.tap() }
-    }
 
     private func button(startingWith prefix: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
