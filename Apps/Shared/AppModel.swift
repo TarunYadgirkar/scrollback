@@ -47,6 +47,9 @@ final class AppModel {
     /// Always today, for the menu bar, independent of the day being browsed.
     private(set) var today: ActivityReport
     private(set) var status: SyncStatus = .idle
+    /// The last refresh's setup problem. Unlike `status`, it holds through the next refresh's
+    /// `.syncing`, so setup screens don't flicker every time the app checks again.
+    private(set) var setupNeed: SetupNeed?
     private(set) var askState: AskState = .idle
     private(set) var earliestDay: Date?
     /// Newest data each device has delivered. iPhone data arrives via Apple's sync, often hours late.
@@ -54,6 +57,13 @@ final class AppModel {
     /// Doomscroll time from the Screen Time monitor, newer than Apple's record.
     private(set) var live: [Session] = []
     var question = ""
+    /// Set by a menu command or shortcut until the Ask field has taken focus, which may first need
+    /// the list to scroll it back into existence.
+    private(set) var wantsAskFocus = false
+    /// Bumped on every jump to a window, so asking for the same one twice still scrolls back to it.
+    private(set) var focusRequest = 0
+    /// True while the user is on today, so a long-running app rolls over to the new day at midnight.
+    private var followsToday = true
     var selection: Selection?
     var focusWindow: DateInterval?
     var viewMode: ViewMode = Preference.viewMode {
@@ -63,6 +73,7 @@ final class AppModel {
         didSet {
             Preference.device = device
             selection = nil
+            focusWindow = nil
         }
     }
 
@@ -86,9 +97,13 @@ final class AppModel {
     var isTrackingLive: Bool { !live.isEmpty }
 
     var iPhoneLag: Date? {
-        guard isToday, device == .iphone, let through = dataThrough[.iphone],
-              Date.now.timeIntervalSince(through) > Self.staleAfter
-        else { return nil }
+        guard isToday, device == .iphone else { return nil }
+        return iPhoneStaleSince
+    }
+
+    /// Where today's iPhone record stops, when that's more than a little while ago, whatever day is on screen.
+    var iPhoneStaleSince: Date? {
+        guard let through = dataThrough[.iphone], Date.now.timeIntervalSince(through) > Self.staleAfter else { return nil }
         return through
     }
 
@@ -98,13 +113,27 @@ final class AppModel {
         do {
             let result = try await provider.refresh(into: store)
             status = .synced(.now, note: result.warnings.first)
+            setupNeed = nil
         } catch {
-            status = provider.setupNeed(for: error).map(SyncStatus.needsSetup) ?? .failed(String(describing: error))
+            setupNeed = provider.setupNeed(for: error)
+            status = setupNeed.map(SyncStatus.needsSetup) ?? .failed(Self.explain(error))
         }
         await reload()
     }
 
+    /// A sentence for the user, not a Swift dump of the error.
+    static func explain(_ error: any Error) -> String {
+        if let message = (error as? LocalizedError)?.errorDescription { return message }
+        return (error as NSError).localizedDescription
+    }
+
     func reload() async {
+        let todayStart = Calendar.current.startOfDay(for: .now)
+        if followsToday, day != todayStart {
+            day = todayStart
+            selection = nil
+            focusWindow = nil
+        }
         var through: [DeviceKind: Date] = [:]
         for device in DeviceKind.allCases {
             through[device] = try? await store.latestEnd(for: device)
@@ -141,6 +170,7 @@ final class AppModel {
     func show(day newDay: Date) async {
         let start = Calendar.current.startOfDay(for: newDay)
         guard start <= Calendar.current.startOfDay(for: .now) else { return }
+        followsToday = start == Calendar.current.startOfDay(for: .now)
         day = start
         selection = nil
         focusWindow = nil
@@ -156,7 +186,7 @@ final class AppModel {
             askState = .answered(answer.text)
             if let window = answer.windows.last { await focus(on: window) }
         } catch {
-            askState = .failed(String(describing: error))
+            askState = .failed(Self.explain(error))
         }
     }
 
@@ -171,10 +201,40 @@ final class AppModel {
         focusWindow = nil
     }
 
+    func requestAskFocus() {
+        wantsAskFocus = true
+    }
+
+    func askFocusTaken() {
+        wantsAskFocus = false
+    }
+
+    /// Lets go of whatever the day is pinned to: a selection, a jump, an answer.
+    func clearFocus() {
+        selection = nil
+        focusWindow = nil
+        switch askState {
+        case .answered, .failed: dismissAnswer()
+        case .idle, .thinking: break
+        }
+    }
+
     func focus(on window: DateInterval) async {
         let target = Calendar.current.startOfDay(for: window.start)
         if target != day { await show(day: target) }
+        // Ask answers about either device; show the one that was actually in use then.
+        let current = activeTime(on: device, in: window)
+        if current < 60, let busier = DeviceKind.allCases.first(where: { activeTime(on: $0, in: window) >= 60 }) {
+            device = busier
+        }
         focusWindow = window
+        focusRequest += 1
+    }
+
+    private func activeTime(on device: DeviceKind, in window: DateInterval) -> TimeInterval {
+        report.sessions.filter { $0.device == device }.reduce(0) { total, session in
+            total + (session.interval.intersection(with: window)?.duration ?? 0)
+        }
     }
 
     static func window(for day: Date) -> DateInterval {

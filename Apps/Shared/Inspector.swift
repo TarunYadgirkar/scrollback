@@ -1,13 +1,15 @@
 import SwiftUI
 import ScrollbackCore
 
-/// Right-hand column on the Mac: binges to jump to, then where the time went.
+/// Right-hand column on the Mac: the day in numbers, binges to jump to, then where the time went.
 struct Inspector: View {
     let model: AppModel
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
+                RecapStrip(report: model.report, device: model.device)
+                if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
                 BingeList(model: model)
                 TopApps(device: model.device, apps: model.report.apps(on: model.device))
             }
