@@ -11,6 +11,13 @@ public enum SharedContainer {
 
     public static var defaults: UserDefaults? { UserDefaults(suiteName: appGroupID) }
 
+    /// Where the app keeps the doomscroll apps it's monitoring. Versioned with the ladder, so a new ladder
+    /// restarts monitoring once instead of waiting for a new pick. The widgets read it to tell "not set up" from "0m".
+    public static let monitoredSelectionKey = "monitoredSelection.v2"
+
+    /// The doomscroll widget's kind, so the monitor and the app can ask it to redraw.
+    public static let doomscrollWidgetKind = "DoomscrollToday"
+
     /// Builds before the App Group kept the database in the app's own container. Move it once.
     static func moveLegacyStore(from legacy: URL, to shared: URL) {
         let fm = FileManager.default

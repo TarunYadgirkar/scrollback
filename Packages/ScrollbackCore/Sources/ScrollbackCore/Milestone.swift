@@ -31,3 +31,31 @@ public enum MilestoneTimeline {
         }
     }
 }
+
+/// Today's doomscroll total as the monitor last saw it, for the widgets.
+public struct DoomscrollToday: Sendable, Equatable {
+    public let minutes: Int
+    /// When the latest step today was reached, or nil before the first one.
+    public let asOf: Date?
+
+    public init(minutes: Int, asOf: Date?) {
+        self.minutes = minutes
+        self.asOf = asOf
+    }
+
+    /// Adds up every rise in minutes that landed on `now`'s day. A restart drops back to 0 and adds nothing,
+    /// so a mid-day restart keeps what was counted before it. Uses the steps themselves, not session lengths,
+    /// which can run longer than the minutes they hold.
+    public static func from(_ milestones: [Milestone], now: Date = .now, calendar: Calendar = .current) -> DoomscrollToday {
+        let dayStart = calendar.startOfDay(for: now)
+        let sorted = milestones.sorted { $0.at < $1.at }
+        var minutes = 0
+        var asOf: Date?
+        for (previous, current) in zip(sorted, sorted.dropFirst())
+        where current.at >= dayStart && current.at <= now && current.minutes > previous.minutes {
+            minutes += current.minutes - previous.minutes
+            asOf = current.at
+        }
+        return DoomscrollToday(minutes: minutes, asOf: asOf)
+    }
+}

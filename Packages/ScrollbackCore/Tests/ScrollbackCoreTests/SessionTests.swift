@@ -263,3 +263,59 @@ import Testing
         #expect(total == TimeInterval(30 * 60))
     }
 }
+
+@Suite struct DoomscrollTodayTests {
+    @Test func addsStepsReachedToday() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(0, 0), minutes: 0),
+            Milestone(at: .at(9, 10), minutes: 5),
+            Milestone(at: .at(9, 16), minutes: 10),
+            Milestone(at: .at(21, 0), minutes: 15),
+        ], now: .at(22, 0))
+
+        #expect(today.minutes == 15)
+        #expect(today.asOf == .at(21, 0))
+    }
+
+    @Test func keepsMinutesFromBeforeARestart() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(0, 0), minutes: 0),
+            Milestone(at: .at(10, 0), minutes: 20),
+            Milestone(at: .at(12, 0), minutes: 0),
+            Milestone(at: .at(13, 0), minutes: 5),
+        ], now: .at(14, 0))
+
+        #expect(today.minutes == 25)
+    }
+
+    @Test func leavesYesterdayOut() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(22, 0, day: 10), minutes: 0),
+            Milestone(at: .at(23, 50, day: 10), minutes: 40),
+            Milestone(at: .at(0, 0), minutes: 0),
+            Milestone(at: .at(0, 6), minutes: 5),
+        ], now: .at(8, 0))
+
+        #expect(today.minutes == 5)
+        #expect(today.asOf == .at(0, 6))
+    }
+
+    @Test func startsAtZeroBeforeTheFirstStep() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(23, 50, day: 10), minutes: 40),
+            Milestone(at: .at(0, 0), minutes: 0),
+        ], now: .at(8, 0))
+
+        #expect(today == DoomscrollToday(minutes: 0, asOf: nil))
+    }
+
+    @Test func countsCoarseLateStepsInFull() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(0, 0), minutes: 0),
+            Milestone(at: .at(20, 0), minutes: 240),
+            Milestone(at: .at(22, 0), minutes: 255),
+        ], now: .at(23, 0))
+
+        #expect(today.minutes == 255)
+    }
+}
