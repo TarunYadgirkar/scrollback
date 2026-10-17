@@ -32,7 +32,27 @@ public actor SessionStore {
                 minutes INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS milestones_at ON milestones(at);
+            CREATE TABLE IF NOT EXISTS cloud_dirty (day INTEGER PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS cloud_days (day INTEGER PRIMARY KEY, digest TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS cloud_state (key TEXT PRIMARY KEY, value BLOB NOT NULL);
+            CREATE TRIGGER IF NOT EXISTS sessions_cloud_insert AFTER INSERT ON sessions BEGIN
+                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(NEW.start / 86400 AS INTEGER));
+            END;
+            CREATE TRIGGER IF NOT EXISTS sessions_cloud_update AFTER UPDATE ON sessions BEGIN
+                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(OLD.start / 86400 AS INTEGER));
+                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(NEW.start / 86400 AS INTEGER));
+            END;
+            CREATE TRIGGER IF NOT EXISTS sessions_cloud_delete AFTER DELETE ON sessions BEGIN
+                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(OLD.start / 86400 AS INTEGER));
+            END;
             """)
+        // Stores from before iCloud sync have days the triggers never saw.
+        if (try db.query("PRAGMA user_version", map: { $0.int(0) }).first ?? 0) < 1 {
+            try db.execute("""
+                INSERT OR IGNORE INTO cloud_dirty (day) SELECT DISTINCT CAST(start / 86400 AS INTEGER) FROM sessions;
+                PRAGMA user_version = 1;
+                """)
+        }
     }
 
     public static func defaultURL() -> URL {
@@ -161,6 +181,85 @@ public actor SessionStore {
         try db.query("SELECT MIN(start) FROM sessions") { row in
             row.real(0) > 0 ? Date(timeIntervalSince1970: row.real(0)) : nil
         }.first
+    }
+
+    // MARK: iCloud history
+
+    /// Days whose sessions changed since they were last sent to iCloud.
+    public func cloudDirtyDays() throws -> [CloudDay] {
+        try db.query("SELECT day FROM cloud_dirty ORDER BY day") { CloudDay(number: $0.int(0)) }
+    }
+
+    /// Every stored session that starts inside `day`, all devices.
+    public func sessions(startingIn day: CloudDay) throws -> [Session] {
+        try db.query(
+            "SELECT id, device, bundle_id, start, end, reason FROM sessions WHERE start >= ? AND start < ? ORDER BY start, id",
+            [.real(day.start.timeIntervalSince1970), .real(day.end.timeIntervalSince1970)],
+            map: Self.session(from:)
+        )
+    }
+
+    public func cloudDigest(for day: CloudDay) throws -> String? {
+        try db.query("SELECT digest FROM cloud_days WHERE day = ?", [.int(day.number)]) { $0.text(0) }.first
+    }
+
+    /// Records what iCloud now holds for `day` (nil when its record was deleted) and clears
+    /// the dirty mark, unless the day changed again after `digest` was computed.
+    public func markCloudUploaded(_ day: CloudDay, digest: String?, ifStill current: String?) throws {
+        try db.transaction {
+            if let digest {
+                try db.run("INSERT INTO cloud_days (day, digest) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET digest = excluded.digest", [.int(day.number), .text(digest)])
+            } else {
+                try db.run("DELETE FROM cloud_days WHERE day = ?", [.int(day.number)])
+            }
+            if try CloudHistory.digest(of: sessions(startingIn: day)) == current {
+                try db.run("DELETE FROM cloud_dirty WHERE day = ?", [.int(day.number)])
+            }
+        }
+    }
+
+    public func clearCloudDirty(_ day: CloudDay) throws {
+        try db.run("DELETE FROM cloud_dirty WHERE day = ?", [.int(day.number)])
+    }
+
+    /// Forgets what iCloud holds, so every day is sent again (after the zone was deleted).
+    public func resetCloudUploads() throws {
+        try db.execute("""
+            DELETE FROM cloud_days;
+            DELETE FROM cloud_state;
+            INSERT OR IGNORE INTO cloud_dirty (day) SELECT DISTINCT CAST(start / 86400 AS INTEGER) FROM sessions;
+            """)
+    }
+
+    /// Makes `day` match what the Mac sent through iCloud: its sessions, and nothing else.
+    @discardableResult
+    public func replaceCloudDay(_ day: CloudDay, with sessions: [Session]) throws -> Int {
+        let before = try count()
+        try db.transaction {
+            try db.run(
+                "DELETE FROM sessions WHERE start >= ? AND start < ?",
+                [.real(day.start.timeIntervalSince1970), .real(day.end.timeIntervalSince1970)]
+            )
+            for s in sessions where day.contains(s.start) {
+                try db.run("""
+                    INSERT INTO sessions (id, device, bundle_id, start, end, reason, synced) VALUES (?, ?, ?, ?, ?, ?, 1)
+                    ON CONFLICT(id) DO UPDATE SET end = excluded.end, reason = excluded.reason, synced = 1
+                    """, Self.values(for: s))
+            }
+        }
+        return try count() - before
+    }
+
+    public func cloudState(_ key: String) throws -> Data? {
+        try db.query("SELECT value FROM cloud_state WHERE key = ?", [.text(key)]) { $0.blob(0) }.first
+    }
+
+    public func setCloudState(_ key: String, _ value: Data?) throws {
+        if let value {
+            try db.run("INSERT INTO cloud_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", [.text(key), .blob(value)])
+        } else {
+            try db.run("DELETE FROM cloud_state WHERE key = ?", [.text(key)])
+        }
     }
 
     public func count() throws -> Int {
