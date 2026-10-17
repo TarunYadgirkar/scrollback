@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cloudHost: CloudHost?
 
     override init() {
+        Self.carryOverPreferences()
         do {
             let store = try SessionStore(url: SessionStore.defaultURL())
             model = AppModel(store: store, provider: BiomeProvider())
@@ -94,6 +95,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    /// The app's ID changed from …scrollback.mac to …scrollback.macos for iCloud. Its database and
+    /// sync key live in Application Support either way; this brings the few preferences along once.
+    private static func carryOverPreferences() {
+        let defaults = UserDefaults.standard
+        guard let old = defaults.persistentDomain(forName: "com.example.scrollback.mac") else { return }
+        for (key, value) in old where defaults.object(forKey: key) == nil {
+            defaults.set(value, forKey: key)
+        }
+    }
 
     private static var launchedAsLoginItem: Bool {
         guard let event = NSAppleEventManager.shared().currentAppleEvent, event.eventID == kAEOpenApplication else { return false }
