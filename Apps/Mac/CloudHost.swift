@@ -1,0 +1,65 @@
+import Foundation
+import Observation
+import ScrollbackCore
+
+@MainActor @Observable
+final class CloudStatus {
+    var text = "iCloud sync is starting"
+    var isPaused = false
+}
+
+/// Sends this Mac's history to the person's private iCloud, so the iPhone gets it away from home.
+/// Runs beside the refresh loop, never in it, so a slow iCloud can't hold up reading Biome.
+@MainActor
+final class CloudHost {
+    /// Long enough for a first upload's batches; whatever is left goes on the next run.
+    static let timeout: Duration = .seconds(120)
+
+    private let store: SessionStore
+    private let status: CloudStatus
+    private let uploader = CloudHistoryUploader()
+    private var running: Task<Void, Never>?
+
+    init(store: SessionStore, status: CloudStatus) {
+        self.store = store
+        self.status = status
+    }
+
+    func uploadInBackground() {
+        guard running == nil else { return }
+        running = Task {
+            await upload()
+            running = nil
+        }
+    }
+
+    /// Sends history to iCloud again after the person deleted it there.
+    func resume() {
+        Task {
+            try? await uploader.resume(store)
+            // An upload already under way may have read the pause before it was cleared; let it
+            // finish, then run again so the paused state it reports doesn't stick.
+            await running?.value
+            status.isPaused = false
+            status.text = "iCloud sync is starting"
+            uploadInBackground()
+        }
+    }
+
+    private func upload() async {
+        do {
+            _ = try await PeerProtocol.withTimeout(Self.timeout, error: CloudSyncError.timedOut) { [store, uploader] in
+                try await uploader.upload(from: store)
+            }
+            status.isPaused = false
+            status.text = "Saved to iCloud at \(Date.now.formatted(date: .omitted, time: .shortened))"
+        } catch CloudSyncError.noAccount {
+            status.text = "iCloud sync is off: sign in to iCloud on this Mac"
+        } catch CloudSyncError.deletedInSettings {
+            status.isPaused = true
+            status.text = "iCloud sync is paused because its data was deleted in Settings"
+        } catch {
+            status.text = "iCloud sync stopped: \(error.localizedDescription)"
+        }
+    }
+}

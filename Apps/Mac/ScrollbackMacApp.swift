@@ -19,7 +19,9 @@ struct ScrollbackMacApp: App {
         .commands { ScrollbackCommands(model: delegate.model) }
 
         MenuBarExtra {
-            MenuBarGlance(model: delegate.model, peerStatus: delegate.peerStatus)
+            MenuBarGlance(model: delegate.model, peerStatus: delegate.peerStatus, cloudStatus: delegate.cloudStatus) {
+                delegate.resumeCloudSync()
+            }
         } label: {
             MenuBarLabel(model: delegate.model, windowRequest: delegate.windowRequest)
         }
@@ -43,11 +45,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     let model: AppModel
     let peerStatus = PeerStatus()
+    let cloudStatus = CloudStatus()
     let windowRequest = WindowRequest()
     private var refreshLoop: Task<Void, Never>?
     private var peerHost: PeerHost?
+    private var cloudHost: CloudHost?
 
     override init() {
+        Self.carryOverPreferences()
         do {
             let store = try SessionStore(url: SessionStore.defaultURL())
             model = AppModel(store: store, provider: BiomeProvider())
@@ -58,8 +63,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let cloudHost = CloudHost(store: model.store, status: cloudStatus)
+        self.cloudHost = cloudHost
         if !Self.launchedAsLoginItem { windowRequest.wantsMain = true }
-        refreshLoop = Task { [model, windowRequest] in
+        refreshLoop = Task { [model, windowRequest, cloudHost] in
             // Show what's already saved while Biome is read, which can take a while.
             await model.reload()
             var isFirst = true
@@ -68,11 +75,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // Even a quiet login launch needs the window when there's nothing it can show without setup.
                 if isFirst, model.setupNeed == .fullDiskAccess, !model.hasData { windowRequest.wantsMain = true }
                 isFirst = false
+                cloudHost.uploadInBackground()
                 try? await Task.sleep(for: Self.refreshInterval)
             }
         }
         peerHost = PeerHost(store: model.store, status: peerStatus)
         peerHost?.start()
+    }
+
+    func resumeCloudSync() {
+        cloudHost?.resume()
     }
 
     /// Opening the app again from Finder or Spotlight while it runs in the menu bar brings the window back.
@@ -83,6 +95,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    /// The app's ID changed from …scrollback.mac to …scrollback.macos for iCloud. Its database and
+    /// sync key live in Application Support either way; this brings the few preferences along once.
+    private static func carryOverPreferences() {
+        let defaults = UserDefaults.standard
+        guard let old = defaults.persistentDomain(forName: "com.tarunyadgirkar.scrollback.mac") else { return }
+        for (key, value) in old where defaults.object(forKey: key) == nil {
+            defaults.set(value, forKey: key)
+        }
+    }
 
     private static var launchedAsLoginItem: Bool {
         guard let event = NSAppleEventManager.shared().currentAppleEvent, event.eventID == kAEOpenApplication else { return false }

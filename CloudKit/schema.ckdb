@@ -1,0 +1,29 @@
+// Schema for iCloud.com.tarunyadgirkar.scrollback. Load it with scripts/cloudkit-schema.sh,
+// then deploy it to Production in CloudKit Console. Every build uses Production, which never
+// adds fields by itself: any new record key must be added here and deployed before it ships.
+DEFINE SCHEMA
+
+    // One UTC day of the Mac's history, written only by the Mac (one Mac per Apple ID).
+    // Record name: day-<days since 1970>.
+    RECORD TYPE HistoryDay (
+        "___recordID" REFERENCE QUERYABLE,
+        payload ENCRYPTED BYTES,
+        version ENCRYPTED INT64,
+        asOf ENCRYPTED TIMESTAMP,
+        coversFrom ENCRYPTED TIMESTAMP,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE Users (
+        "___createTime" TIMESTAMP,
+        "___createdBy" REFERENCE,
+        "___etag" STRING,
+        "___modTime" TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID" REFERENCE,
+        roles LIST<INT64>,
+        GRANT WRITE TO "_creator",
+        GRANT READ TO "_world"
+    );
