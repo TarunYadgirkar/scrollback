@@ -254,8 +254,22 @@ import Testing
         #expect(sessions.count == 3)
         #expect(sessions[0].start == .at(19, 25))
         #expect(sessions[1].start == .at(19, 30))
-        #expect(sessions[2].start == .at(19, 35))
+        #expect(sessions[2].start == .at(19, 36))
+        #expect(sessions.map(\.duration).reduce(0, +) == TimeInterval(15 * 60))
         #expect(BingeDetector.binges(in: sessions).first?.span == TimeInterval(16 * 60))
+    }
+
+    @Test func slowContinuousStepStillChainsWithoutCountingTheWholeGap() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(19, 0), minutes: 0),
+            Milestone(at: .at(19, 5), minutes: 5),
+            Milestone(at: .at(19, 12, 30), minutes: 10),
+        ])
+
+        #expect(sessions.count == 2)
+        #expect(sessions[1].start == .at(19, 7))
+        #expect(sessions[1].duration == 5.5 * 60)
+        #expect(BingeDetector.binges(in: sessions).count == 1)
     }
 
     @Test func ignoresRestartsWhereMinutesGoBackwards() {
