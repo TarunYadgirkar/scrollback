@@ -62,7 +62,6 @@ struct DoomscrollProvider: AppIntentTimelineProvider {
     /// The second entry zeroes the count at midnight even if nothing wakes the widget then.
     func timeline(for configuration: DoomscrollWidgetIntent, in context: Context) async -> Timeline<DoomscrollEntry> {
         let now = Date.now
-        SharedContainer.defaults?.set(now, forKey: SharedContainer.widgetReloadedAtKey)
         let entry = await DoomscrollEntry.load(now: now)
         let calendar = Calendar.current
         let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(86_400)
