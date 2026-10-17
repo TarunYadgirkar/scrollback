@@ -157,6 +157,22 @@ private func tempStore() throws -> (SessionStore, URL) {
         #expect(CloudHistory.digest(of: try await store.sessions(startingIn: day)) == digest)
     }
 
+    @Test func replaceCloudDayKeepsWhatArrivedLaterOverWiFi() async throws {
+        let (store, url) = try tempStore()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let gone = session("com.burbn.instagram", at(9), at(9.5))
+        let growing = session("com.apple.Safari", at(10), at(11), device: .mac)
+        let later = session("com.atebits.Tweetie2", at(13), at(13.5))
+        try await store.upsert([gone, growing, later])
+
+        // The record was packed at noon, when Safari's session was shorter and Twitter hadn't started.
+        let shorter = session("com.apple.Safari", at(10), at(10.5), device: .mac)
+        try await store.replaceCloudDay(day, with: [shorter], asOf: at(12))
+        let kept = try await store.sessions(startingIn: day)
+        #expect(kept.map(\.bundleID) == ["com.apple.Safari", "com.atebits.Tweetie2"])
+        #expect(kept[0].end == at(11))
+    }
+
     @Test func replaceCloudDayTouchesOnlyThatDay() async throws {
         let (store, url) = try tempStore()
         defer { try? FileManager.default.removeItem(at: url) }

@@ -19,6 +19,7 @@ struct MenuBarGlance: View {
     let model: AppModel
     let peerStatus: PeerStatus
     let cloudStatus: CloudStatus
+    let resumeCloudSync: () -> Void
     @Environment(\.openWindow) private var openWindow
     @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
@@ -42,6 +43,9 @@ struct MenuBarGlance: View {
                 SyncPill(status: model.status) { Task { await model.refresh() } }
                 Text(peerStatus.text).font(TypeScale.label).foregroundStyle(Palette.inkMuted)
                 Text(cloudStatus.text).font(TypeScale.label).foregroundStyle(Palette.inkMuted)
+                if cloudStatus.isPaused {
+                    Button("Turn iCloud sync back on", action: resumeCloudSync).controlSize(.small)
+                }
             }
             Toggle("Open at login", isOn: $opensAtLogin)
                 .toggleStyle(.checkbox)

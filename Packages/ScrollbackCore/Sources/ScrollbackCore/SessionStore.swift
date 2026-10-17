@@ -248,19 +248,20 @@ public actor SessionStore {
             """)
     }
 
-    /// Makes `day` match what the Mac sent through iCloud: its sessions, and nothing else.
+    /// Makes `day` match what the Mac sent through iCloud as of `asOf`. Rows that start after
+    /// `asOf`, and end times longer than the record's, came later over Wi-Fi and are kept.
     @discardableResult
-    public func replaceCloudDay(_ day: CloudDay, with sessions: [Session]) throws -> Int {
+    public func replaceCloudDay(_ day: CloudDay, with sessions: [Session], asOf: Date = .distantFuture) throws -> Int {
         let before = try count()
         try db.transaction {
             try db.run(
-                "DELETE FROM sessions WHERE start >= ? AND start < ?",
-                [.real(day.start.timeIntervalSince1970), .real(day.end.timeIntervalSince1970)]
+                "DELETE FROM sessions WHERE start >= ? AND start < ? AND start <= ?",
+                [.real(day.start.timeIntervalSince1970), .real(day.end.timeIntervalSince1970), .real(min(asOf, day.end).timeIntervalSince1970)]
             )
             for s in sessions where day.contains(s.start) {
                 try db.run("""
                     INSERT INTO sessions (id, device, bundle_id, start, end, reason, synced) VALUES (?, ?, ?, ?, ?, ?, 1)
-                    ON CONFLICT(id) DO UPDATE SET end = excluded.end, reason = excluded.reason, synced = 1
+                    ON CONFLICT(id) DO UPDATE SET end = MAX(sessions.end, excluded.end), reason = excluded.reason, synced = 1
                     """, Self.values(for: s))
             }
         }
