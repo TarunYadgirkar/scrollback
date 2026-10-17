@@ -161,16 +161,33 @@ private func tempStore() throws -> (SessionStore, URL) {
         let (store, url) = try tempStore()
         defer { try? FileManager.default.removeItem(at: url) }
         let gone = session("com.burbn.instagram", at(9), at(9.5))
-        let growing = session("com.apple.Safari", at(10), at(11), device: .mac)
+        let growing = session("com.apple.Safari", at(10), at(12.5), device: .mac)
+        let corrected = session("com.apple.Notes", at(10.5), at(11.5), device: .mac)
         let later = session("com.atebits.Tweetie2", at(13), at(13.5))
-        try await store.upsert([gone, growing, later])
+        try await store.upsert([gone, growing, corrected, later])
 
-        // The record was packed at noon, when Safari's session was shorter and Twitter hadn't started.
-        let shorter = session("com.apple.Safari", at(10), at(10.5), device: .mac)
-        try await store.replaceCloudDay(day, with: [shorter], asOf: at(12))
+        // Packed at noon: Safari was still open (it grew past noon over Wi-Fi), the Mac had since
+        // trimmed Notes to end earlier, and Twitter hadn't started.
+        try await store.replaceCloudDay(day, with: [
+            session("com.apple.Safari", at(10), at(11.5), device: .mac),
+            session("com.apple.Notes", at(10.5), at(11), device: .mac),
+        ], asOf: at(12))
         let kept = try await store.sessions(startingIn: day)
-        #expect(kept.map(\.bundleID) == ["com.apple.Safari", "com.atebits.Tweetie2"])
-        #expect(kept[0].end == at(11))
+        #expect(kept.map(\.bundleID) == ["com.apple.Safari", "com.apple.Notes", "com.atebits.Tweetie2"])
+        #expect(kept[0].end == at(12.5))
+        #expect(kept[1].end == at(11))
+    }
+
+    @Test func replaceCloudDayLeavesHoursBeforeTheMacsReach() async throws {
+        let (store, url) = try tempStore()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let early = session("com.burbn.instagram", at(2), at(3))
+        let late = session("com.burbn.instagram", at(15), at(16))
+        try await store.upsert([early, late])
+
+        // A Mac whose store only starts at 08:00 sends a day that's empty after that.
+        try await store.replaceCloudDay(day, with: [], asOf: at(20), coversFrom: at(8))
+        #expect(try await store.sessions(startingIn: day) == [early])
     }
 
     @Test func replaceCloudDayTouchesOnlyThatDay() async throws {

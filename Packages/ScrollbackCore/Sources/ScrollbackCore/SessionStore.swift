@@ -36,21 +36,25 @@ public actor SessionStore {
             CREATE TABLE IF NOT EXISTS cloud_days (day INTEGER PRIMARY KEY, digest TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS cloud_state (key TEXT PRIMARY KEY, value BLOB NOT NULL);
             """)
-        // Stores from before iCloud sync have days the triggers never saw.
-        if (try db.query("PRAGMA user_version", map: { $0.int(0) }).first ?? 0) < 1 {
-            try db.execute("""
-                INSERT OR IGNORE INTO cloud_dirty (day) SELECT DISTINCT CAST(start / 86400 AS INTEGER) FROM sessions;
-                PRAGMA user_version = 1;
-                """)
-        }
-        if (try db.query("PRAGMA user_version", map: { $0.int(0) }).first ?? 0) < 2 {
-            try db.execute("""
-                DROP TRIGGER IF EXISTS sessions_cloud_insert;
-                DROP TRIGGER IF EXISTS sessions_cloud_update;
-                DROP TRIGGER IF EXISTS sessions_cloud_delete;
-                \(Self.cloudTriggers)
-                PRAGMA user_version = 2;
-                """)
+        // The app and the monitor extension can open the store at the same moment, so each
+        // step re-reads the version inside its own write transaction.
+        try Self.migrate(db, to: 1, """
+            INSERT OR IGNORE INTO cloud_dirty (day) SELECT DISTINCT CAST(start / 86400 AS INTEGER) FROM sessions;
+            """)
+        try Self.migrate(db, to: 2, """
+            DROP TRIGGER IF EXISTS sessions_cloud_insert;
+            DROP TRIGGER IF EXISTS sessions_cloud_update;
+            DROP TRIGGER IF EXISTS sessions_cloud_delete;
+            \(Self.cloudTriggers)
+            """)
+    }
+
+    private static func migrate(_ db: SQLiteDatabase, to version: Int64, _ sql: String) throws {
+        func current() throws -> Int64 { try db.query("PRAGMA user_version", map: { $0.int(0) }).first ?? 0 }
+        guard try current() < version else { return }
+        try db.transaction {
+            guard try current() < version else { return }
+            try db.execute(sql + "\nPRAGMA user_version = \(version);")
         }
     }
 
@@ -249,24 +253,27 @@ public actor SessionStore {
             """)
     }
 
-    /// Makes `day` match what the Mac sent through iCloud as of `asOf`. Rows that start after
-    /// `asOf`, and end times longer than the record's, came later over Wi-Fi and are kept.
+    /// Makes `day` match what the Mac sent through iCloud as of `asOf`, for the part of it the
+    /// Mac's store reaches back to (`coversFrom`). Rows that start after `asOf`, end times that
+    /// grew past `asOf` over Wi-Fi, and rows older than the Mac's reach are kept.
     @discardableResult
-    public func replaceCloudDay(_ day: CloudDay, with sessions: [Session], asOf: Date = .distantFuture) throws -> Int {
+    public func replaceCloudDay(_ day: CloudDay, with sessions: [Session], asOf: Date = .distantFuture, coversFrom: Date = .distantPast) throws -> Int {
         let before = try count()
         let incoming = sessions.filter { day.contains($0.start) }
         let ids = String(decoding: try JSONEncoder().encode(incoming.map(\.id)), as: UTF8.self)
         try db.transaction {
-            // Rows the record carries are left for the upsert below, so a longer end survives.
+            // Rows the record carries are left for the upsert below.
             try db.run(
                 "DELETE FROM sessions WHERE start >= ? AND start < ? AND start <= ? AND id NOT IN (SELECT value FROM json_each(?))",
-                [.real(day.start.timeIntervalSince1970), .real(day.end.timeIntervalSince1970), .real(min(asOf, day.end).timeIntervalSince1970), .text(ids)]
+                [.real(max(day.start, coversFrom).timeIntervalSince1970), .real(day.end.timeIntervalSince1970), .real(min(asOf, day.end).timeIntervalSince1970), .text(ids)]
             )
             for s in incoming {
                 try db.run("""
                     INSERT INTO sessions (id, device, bundle_id, start, end, reason, synced) VALUES (?, ?, ?, ?, ?, ?, 1)
-                    ON CONFLICT(id) DO UPDATE SET end = MAX(sessions.end, excluded.end), reason = excluded.reason, synced = 1
-                    """, Self.values(for: s))
+                    ON CONFLICT(id) DO UPDATE SET
+                        end = CASE WHEN sessions.end > ? THEN MAX(sessions.end, excluded.end) ELSE excluded.end END,
+                        reason = excluded.reason, synced = 1
+                    """, Self.values(for: s) + [.real(asOf.timeIntervalSince1970)])
             }
         }
         return try count() - before

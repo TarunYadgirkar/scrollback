@@ -37,6 +37,9 @@ final class CloudHost {
     func resume() {
         Task {
             try? await uploader.resume(store)
+            // An upload already under way may have read the pause before it was cleared; let it
+            // finish, then run again so the paused state it reports doesn't stick.
+            await running?.value
             status.isPaused = false
             status.text = "iCloud sync is starting"
             uploadInBackground()

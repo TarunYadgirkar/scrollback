@@ -4,6 +4,7 @@ import Foundation
 
 public enum CloudSyncError: Error, Equatable, LocalizedError {
     case noAccount
+    case accountUnavailable(String)
     case timedOut
     case needsUpdate
     case deletedInSettings
@@ -11,6 +12,7 @@ public enum CloudSyncError: Error, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .noAccount: "Sign in to iCloud to sync history away from your Mac."
+        case .accountUnavailable(let reason): reason
         case .timedOut: "iCloud didn't answer. Try again in a bit."
         case .needsUpdate: "Your Mac sent history in a newer format. Update Scrollback on this iPhone."
         case .deletedInSettings: "Scrollback's iCloud data was deleted in Settings."
@@ -29,7 +31,13 @@ enum CloudAccess {
     /// Throws unless iCloud is usable, and starts over when the signed-in account changed,
     /// since what the old account holds says nothing about the new one.
     static func checkAccount(_ container: CKContainer, store: SessionStore) async throws {
-        guard try await container.accountStatus() == .available else { throw CloudSyncError.noAccount }
+        switch try await container.accountStatus() {
+        case .available: break
+        case .noAccount: throw CloudSyncError.noAccount
+        case .restricted: throw CloudSyncError.accountUnavailable("iCloud is restricted on this device (Screen Time or a profile).")
+        case .temporarilyUnavailable: throw CloudSyncError.accountUnavailable("iCloud needs attention: open Settings and check your Apple Account.")
+        default: throw CloudSyncError.accountUnavailable("Couldn't check iCloud. Try again in a bit.")
+        }
         let user = try await container.userRecordID().recordName
         let known = try await store.cloudState(accountKey).map { String(decoding: $0, as: UTF8.self) }
         guard known != user else { return }
@@ -54,6 +62,7 @@ public struct CloudHistoryUploader: Sendable {
     static let batchBytes = 1_000_000
     static let zoneReadyKey = "zoneReady"
     static let restoredKey = "restored"
+    static let restoreTokenKey = "restoreToken"
     /// Set when the person deleted Scrollback's iCloud data in Settings. Nothing is sent until
     /// they turn sync back on, so a relaunch can't quietly put their history back.
     static let deletedInSettingsKey = "deletedInSettings"
@@ -86,6 +95,7 @@ public struct CloudHistoryUploader: Sendable {
             try await store.setCloudState(Self.zoneReadyKey, Data([1]))
         }
 
+        let coversFrom = try await store.earliestStart() ?? .distantPast
         var batch: [Change] = []
         var bytes = 0
         var sent = 0
@@ -117,6 +127,7 @@ public struct CloudHistoryUploader: Sendable {
                 record.encryptedValues[CloudHistory.payloadKey] = payload
                 record.encryptedValues[CloudHistory.versionKey] = CloudHistory.version
                 record.encryptedValues[CloudHistory.asOfKey] = Date.now
+                record.encryptedValues[CloudHistory.coversFromKey] = coversFrom
                 batch.append(Change(day: day, digest: digest, record: record))
                 bytes += payload.count
             }
@@ -131,7 +142,8 @@ public struct CloudHistoryUploader: Sendable {
     /// what iCloud already holds. Biome only reaches back a few weeks, so without this its first
     /// upload would overwrite older or partly covered days with less than they had.
     private func restore(from database: CKDatabase, into store: SessionStore) async throws {
-        var token: CKServerChangeToken?
+        // Saved after every page, so a big history that outlasts one run picks up where it stopped.
+        var token = try await store.cloudState(Self.restoreTokenKey).flatMap(CloudHistoryDownloader.token(from:))
         while true {
             let changes: (modificationResultsByID: [CKRecord.ID: Result<CKDatabase.RecordZoneChange.Modification, any Error>],
                           deletions: [CKDatabase.RecordZoneChange.Deletion],
@@ -143,6 +155,10 @@ public struct CloudHistoryUploader: Sendable {
                 // Nothing to take in. After a deletion in Settings this only runs once the person
                 // turned sync back on, and the zone is re-created right after.
                 return
+            } catch let error as CKError where error.code == .changeTokenExpired && token != nil {
+                token = nil
+                try await store.setCloudState(Self.restoreTokenKey, nil)
+                continue
             }
             for (id, result) in changes.modificationResultsByID {
                 guard let day = CloudDay(recordName: id.recordName) else { continue }
@@ -153,16 +169,25 @@ public struct CloudHistoryUploader: Sendable {
                 case .failure: continue
                 }
                 let version = (record.encryptedValues[CloudHistory.versionKey] as? NSNumber)?.int64Value ?? 0
-                guard let payload = record.encryptedValues[CloudHistory.payloadKey] as? Data,
-                      let sessions = try? CloudHistory.unpack(payload, version: version)
-                else { continue }
-                let cloudDigest = CloudHistory.digest(of: sessions.filter { day.contains($0.start) })
-                try await store.insertMissing(sessions.filter { day.contains($0.start) })
+                guard let payload = record.encryptedValues[CloudHistory.payloadKey] as? Data else { continue }
+                let sessions: [Session]
+                do {
+                    sessions = try CloudHistory.unpack(payload, version: version)
+                } catch CloudHistory.Failure.newerVersion {
+                    // A newer Mac build wrote this; overwriting it with what this build knows would lose data.
+                    throw CloudSyncError.needsUpdate
+                } catch {
+                    continue
+                }
+                let inDay = sessions.filter { day.contains($0.start) }
+                let cloudDigest = CloudHistory.digest(of: inDay)
+                try await store.insertMissing(inDay)
                 // A day iCloud already has exactly as this store now does needn't be sent back.
                 let merged = CloudHistory.digest(of: try await store.sessions(startingIn: day))
                 if merged == cloudDigest { try await store.markCloudUploaded(day, digest: merged, ifStill: merged) }
             }
             token = changes.changeToken
+            try await store.setCloudState(Self.restoreTokenKey, try CloudHistoryDownloader.data(from: changes.changeToken))
             if !changes.moreComing { return }
         }
     }
@@ -300,7 +325,8 @@ public struct CloudHistoryDownloader: Sendable {
                     continue
                 }
                 let asOf = record.encryptedValues[CloudHistory.asOfKey] as? Date
-                added += try await store.replaceCloudDay(day, with: sessions, asOf: asOf ?? .distantFuture)
+                let coversFrom = record.encryptedValues[CloudHistory.coversFromKey] as? Date ?? .distantPast
+                added += try await store.replaceCloudDay(day, with: sessions, asOf: asOf ?? .distantFuture, coversFrom: coversFrom)
                 let newest = await Self.lastMacSave(in: store) ?? .distantPast
                 if let asOf, asOf > newest {
                     let seconds = asOf.timeIntervalSince1970
