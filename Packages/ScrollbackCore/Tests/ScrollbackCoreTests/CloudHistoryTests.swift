@@ -104,6 +104,45 @@ private func tempStore() throws -> (SessionStore, URL) {
         #expect(try await store.cloudDigest(for: day) == current)
     }
 
+    @Test func changedRowsRewriteThroughEveryWritePath() async throws {
+        let (store, url) = try tempStore()
+        defer { try? FileManager.default.removeItem(at: url) }
+        try await store.upsert([session("com.burbn.instagram", at(19), at(19.5))])
+        try await store.upsert([session("com.burbn.instagram", at(19), at(19.6))])
+        try await store.clearCloudDirty(day)
+        try await store.upsert([session("com.burbn.instagram", at(19), at(19.7))], markSynced: true)
+        #expect(try await store.cloudDirtyDays() == [day])
+
+        try await store.replace(device: .iphone, in: DateInterval(start: at(0), end: at(23)), with: [
+            session("com.burbn.instagram", at(19), at(19.8)), session("com.burbn.instagram", at(19), at(19.9)),
+        ])
+        try await store.replaceCloudDay(day, with: [
+            session("com.burbn.instagram", at(19), at(20)), session("com.burbn.instagram", at(19), at(20.1)),
+        ])
+        #expect(try await store.sessions(startingIn: day).map(\.end) == [at(20.1)])
+        #expect(try await store.cloudDirtyDays() == [day])
+    }
+
+    @Test func storesWithTheOldTriggersGetTheFixedOnes() async throws {
+        let url = FileManager.default.temporaryDirectory.appending(path: "scrollback-cloud-\(UUID()).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        _ = try SessionStore(url: url)
+        let old = try SQLiteDatabase(path: url.path)
+        try old.execute("""
+            DROP TRIGGER sessions_cloud_update;
+            CREATE TRIGGER sessions_cloud_update AFTER UPDATE ON sessions BEGIN
+                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(OLD.start / 86400 AS INTEGER));
+                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(NEW.start / 86400 AS INTEGER));
+            END;
+            PRAGMA user_version = 1;
+            """)
+
+        let store = try SessionStore(url: url)
+        try await store.upsert([session("com.burbn.instagram", at(19), at(19.5))])
+        try await store.upsert([session("com.burbn.instagram", at(19), at(19.6))])
+        #expect(try await store.cloudDirtyDays() == [day])
+    }
+
     @Test func unchangedRewriteKeepsTheSameDigest() async throws {
         let (store, url) = try tempStore()
         defer { try? FileManager.default.removeItem(at: url) }

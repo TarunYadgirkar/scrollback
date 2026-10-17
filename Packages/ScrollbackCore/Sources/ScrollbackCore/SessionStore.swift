@@ -35,16 +35,6 @@ public actor SessionStore {
             CREATE TABLE IF NOT EXISTS cloud_dirty (day INTEGER PRIMARY KEY);
             CREATE TABLE IF NOT EXISTS cloud_days (day INTEGER PRIMARY KEY, digest TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS cloud_state (key TEXT PRIMARY KEY, value BLOB NOT NULL);
-            CREATE TRIGGER IF NOT EXISTS sessions_cloud_insert AFTER INSERT ON sessions BEGIN
-                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(NEW.start / 86400 AS INTEGER));
-            END;
-            CREATE TRIGGER IF NOT EXISTS sessions_cloud_update AFTER UPDATE ON sessions BEGIN
-                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(OLD.start / 86400 AS INTEGER));
-                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(NEW.start / 86400 AS INTEGER));
-            END;
-            CREATE TRIGGER IF NOT EXISTS sessions_cloud_delete AFTER DELETE ON sessions BEGIN
-                INSERT OR IGNORE INTO cloud_dirty (day) VALUES (CAST(OLD.start / 86400 AS INTEGER));
-            END;
             """)
         // Stores from before iCloud sync have days the triggers never saw.
         if (try db.query("PRAGMA user_version", map: { $0.int(0) }).first ?? 0) < 1 {
@@ -53,7 +43,34 @@ public actor SessionStore {
                 PRAGMA user_version = 1;
                 """)
         }
+        if (try db.query("PRAGMA user_version", map: { $0.int(0) }).first ?? 0) < 2 {
+            try db.execute("""
+                DROP TRIGGER IF EXISTS sessions_cloud_insert;
+                DROP TRIGGER IF EXISTS sessions_cloud_update;
+                DROP TRIGGER IF EXISTS sessions_cloud_delete;
+                \(Self.cloudTriggers)
+                PRAGMA user_version = 2;
+                """)
+        }
     }
+
+    /// An upsert's conflict policy overrides OR IGNORE inside a trigger, so these dedupe with NOT EXISTS.
+    private static let cloudTriggers = """
+        CREATE TRIGGER sessions_cloud_insert AFTER INSERT ON sessions BEGIN
+            INSERT INTO cloud_dirty (day) SELECT CAST(NEW.start / 86400 AS INTEGER)
+            WHERE NOT EXISTS (SELECT 1 FROM cloud_dirty WHERE day = CAST(NEW.start / 86400 AS INTEGER));
+        END;
+        CREATE TRIGGER sessions_cloud_update AFTER UPDATE ON sessions BEGIN
+            INSERT INTO cloud_dirty (day) SELECT CAST(OLD.start / 86400 AS INTEGER)
+            WHERE NOT EXISTS (SELECT 1 FROM cloud_dirty WHERE day = CAST(OLD.start / 86400 AS INTEGER));
+            INSERT INTO cloud_dirty (day) SELECT CAST(NEW.start / 86400 AS INTEGER)
+            WHERE NOT EXISTS (SELECT 1 FROM cloud_dirty WHERE day = CAST(NEW.start / 86400 AS INTEGER));
+        END;
+        CREATE TRIGGER sessions_cloud_delete AFTER DELETE ON sessions BEGIN
+            INSERT INTO cloud_dirty (day) SELECT CAST(OLD.start / 86400 AS INTEGER)
+            WHERE NOT EXISTS (SELECT 1 FROM cloud_dirty WHERE day = CAST(OLD.start / 86400 AS INTEGER));
+        END;
+        """
 
     public static func defaultURL() -> URL {
         #if os(iOS)
