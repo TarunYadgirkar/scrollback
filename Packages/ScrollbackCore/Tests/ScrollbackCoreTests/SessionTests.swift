@@ -252,6 +252,17 @@ import Testing
         #expect(BingeDetector.binges(in: sessions).count == 1)
     }
 
+    @Test func firstStepAfterResetKeepsItsMeasuredMinutes() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(19, 0), minutes: 0),
+            Milestone(at: .at(19, 7, 30), minutes: 5),
+        ])
+
+        #expect(sessions.count == 1)
+        #expect(sessions[0].start == .at(19, 2, 30))
+        #expect(sessions[0].duration == 5 * 60)
+    }
+
     @Test func ignoresRestartsWhereMinutesGoBackwards() {
         let sessions = MilestoneTimeline.sessions(from: [
             Milestone(at: .at(23, 50), minutes: 40),
