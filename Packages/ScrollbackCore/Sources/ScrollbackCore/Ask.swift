@@ -10,13 +10,36 @@ public struct Asker: Sendable {
         public let windows: [DateInterval]
     }
 
-    public enum Failure: Error, CustomStringConvertible {
+    public enum Failure: Error, CustomStringConvertible, LocalizedError {
         case modelUnavailable(String)
+        case couldNotAnswer(String)
 
         public var description: String {
             switch self {
             case .modelUnavailable(let reason): "Apple Intelligence isn't available (\(reason)). Turn it on in System Settings to use Ask."
+            case .couldNotAnswer(let reason): reason
             }
+        }
+
+        public var errorDescription: String? { description }
+    }
+
+    /// Why Ask can or can't run right now, in terms the UI can word plainly.
+    public enum Availability: Sendable, Equatable {
+        case available
+        /// Apple Intelligence is on but its model is still downloading.
+        case downloading
+        case turnedOff
+        case unsupported
+    }
+
+    public static var availability: Availability {
+        switch SystemLanguageModel.default.availability {
+        case .available: .available
+        case .unavailable(.modelNotReady): .downloading
+        case .unavailable(.appleIntelligenceNotEnabled): .turnedOff
+        case .unavailable(.deviceNotEligible): .unsupported
+        @unknown default: .turnedOff
         }
     }
 
@@ -40,8 +63,23 @@ public struct Asker: Sendable {
             tools: [ActivityTool(store: store, log: log), LatestBingeTool(store: store, log: log, now: now)],
             instructions: Self.instructions(now: now)
         )
-        let response = try await session.respond(to: question)
-        return Answer(text: response.content, windows: await log.windows)
+        do {
+            let response = try await session.respond(to: question)
+            return Answer(text: response.content, windows: await log.windows)
+        } catch let error as LanguageModelSession.GenerationError {
+            throw Failure.couldNotAnswer(Self.explain(error))
+        }
+    }
+
+    static func explain(_ error: LanguageModelSession.GenerationError) -> String {
+        switch error {
+        case .exceededContextWindowSize: "That covers too much history to answer at once. Try a shorter stretch of time."
+        case .guardrailViolation: "Apple's model wouldn't answer that one. Try asking it a different way."
+        case .unsupportedLanguageOrLocale: "Ask only understands questions in a language Apple Intelligence supports."
+        case .rateLimited, .concurrentRequests: "Apple's model is busy. Try again in a moment."
+        case .assetsUnavailable: "Apple's model isn't ready yet. Try again once it has finished downloading."
+        default: "Ask couldn't answer that. Try rewording the question."
+        }
     }
 
     static func instructions(now: Date) -> String {
