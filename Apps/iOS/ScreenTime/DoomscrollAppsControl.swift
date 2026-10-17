@@ -52,8 +52,11 @@ struct DoomscrollAppsControl: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        if DoomscrollMonitoring.picksDiffer(draft, access.selection), draft.hasPicks {
+                        if DoomscrollMonitoring.picksDiffer(draft, access.selection) {
                             access.selection = draft
+                        } else {
+                            // Starts only if tracking isn't already running these apps.
+                            access.retryMonitoring()
                         }
                         isPicking = false
                     }
