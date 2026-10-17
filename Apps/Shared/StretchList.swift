@@ -16,7 +16,7 @@ struct StretchList<Header: View>: View {
         ScrollViewReader { reader in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Space.s) {
-                    header.padding(.bottom, Space.s)
+                    header.padding(.bottom, Space.s).id(Self.headerID)
                     if stretches.isEmpty { empty }
                     ForEach(stretches) { stretch in
                         StretchRow(
@@ -32,13 +32,19 @@ struct StretchList<Header: View>: View {
                 .padding(.vertical, Space.m)
             }
             .refreshable { await model.refresh() }
-            .onChange(of: model.focusWindow) { _, _ in
+            .onChange(of: model.focusRequest, initial: true) { _, _ in
                 guard let target = stretches.last(where: isFocused) else { return }
                 expanded.insert(target.id)
                 withAnimation(.easeOut(duration: 0.3)) { reader.scrollTo(target.id, anchor: .top) }
             }
+            // The header holds the Ask field, and a lazy stack drops it once it scrolls away.
+            .onChange(of: model.wantsAskFocus) { _, wants in
+                if wants { withAnimation(.easeOut(duration: 0.3)) { reader.scrollTo(Self.headerID, anchor: .top) } }
+            }
         }
     }
+
+    private static var headerID: String { "header" }
 
     private var empty: some View {
         VStack(alignment: .leading, spacing: Space.xs) {

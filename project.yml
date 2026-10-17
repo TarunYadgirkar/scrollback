@@ -32,6 +32,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
+        # Menu bar app: the Dock icon appears only while the window is open (see inDockWhileOpen).
+        LSUIElement: true
         NSLocalNetworkUsageDescription: Scrollback sends your usage history to the Scrollback app on your iPhone.
         NSBonjourServices: [_scrollback._tcp]
     settings:
