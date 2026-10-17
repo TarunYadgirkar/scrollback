@@ -5,6 +5,7 @@ import ScrollbackCore
 @MainActor @Observable
 final class CloudStatus {
     var text = "iCloud sync is starting"
+    var isPaused = false
 }
 
 /// Sends this Mac's history to the person's private iCloud, so the iPhone gets it away from home.
@@ -18,8 +19,6 @@ final class CloudHost {
     private let status: CloudStatus
     private let uploader = CloudHistoryUploader()
     private var running: Task<Void, Never>?
-    /// Set when the person deleted Scrollback's iCloud data; respected until the app next opens.
-    private var paused = false
 
     init(store: SessionStore, status: CloudStatus) {
         self.store = store
@@ -27,10 +26,20 @@ final class CloudHost {
     }
 
     func uploadInBackground() {
-        guard running == nil, !paused else { return }
+        guard running == nil else { return }
         running = Task {
             await upload()
             running = nil
+        }
+    }
+
+    /// Sends history to iCloud again after the person deleted it there.
+    func resume() {
+        Task {
+            try? await uploader.resume(store)
+            status.isPaused = false
+            status.text = "iCloud sync is starting"
+            uploadInBackground()
         }
     }
 
@@ -39,12 +48,13 @@ final class CloudHost {
             _ = try await PeerProtocol.withTimeout(Self.timeout, error: CloudSyncError.timedOut) { [store, uploader] in
                 try await uploader.upload(from: store)
             }
+            status.isPaused = false
             status.text = "Saved to iCloud at \(Date.now.formatted(date: .omitted, time: .shortened))"
         } catch CloudSyncError.noAccount {
             status.text = "iCloud sync is off: sign in to iCloud on this Mac"
         } catch CloudSyncError.deletedInSettings {
-            paused = true
-            status.text = "iCloud history was deleted in Settings. Sync resumes next time Scrollback opens."
+            status.isPaused = true
+            status.text = "iCloud sync is paused because its data was deleted in Settings"
         } catch {
             status.text = "iCloud sync stopped: \(error.localizedDescription)"
         }
