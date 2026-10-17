@@ -60,10 +60,21 @@ public enum CloudHistory {
     public static func unpack(_ data: Data, version: Int64) throws -> [Session] {
         guard version <= Self.version else { throw Failure.newerVersion(version) }
         guard let json = try? (data as NSData).decompressed(using: .lzfse) as Data,
-              let decoded = try? JSONDecoder().decode([Session].self, from: json)
+              let decoded = try? JSONDecoder().decode([Packed].self, from: json)
         else { throw Failure.unreadable }
         // Rebuilt through init so ids always derive from fields, never from the record.
-        return decoded.map { Session(device: $0.device, bundleID: $0.bundleID, start: $0.start, end: $0.end, reason: $0.reason) }
+        return decoded.map {
+            Session(device: $0.device, bundleID: $0.bundleID, start: $0.start, end: $0.end, reason: $0.reason.flatMap(OpenReason.init(rawValue:)))
+        }
+    }
+
+    /// Session as read back: an open reason this build doesn't know yet is dropped, not fatal.
+    private struct Packed: Decodable {
+        let device: DeviceKind
+        let bundleID: String
+        let start: Date
+        let end: Date
+        let reason: String?
     }
 
     /// Changes whenever anything about the day's sessions does, so unchanged days aren't re-sent.

@@ -40,6 +40,8 @@ Ask needs Apple Intelligence turned on, on whichever device you use it.
 2. `xcrun cktool save-token --type management`, then `scripts/cloudkit-schema.sh`.
 3. In CloudKit Console, deploy the schema to Production. Every build, USB or TestFlight, uses Production so the Mac and phone see the same database.
 
+iCloud makes the Mac app carry a development provisioning profile, which Apple issues for about a year. Re-run `scripts/install-mac.sh` before it lapses, or the app won't open.
+
 ## Sync security
 
 The Mac and iPhone share a 32-byte key (`~/Library/Application Support/Scrollback/peer.key`, mode 0600), baked into the phone build at install time. Requests are HMAC-signed with a timestamp and can't be replayed. Responses are ChaChaPoly-encrypted and bound to the request. The server accepts four connections at a time and gives no response to unauthenticated requests.
@@ -51,4 +53,5 @@ The Mac also saves its history to your own private iCloud database, one record p
 ## Known limits
 
 - iPhone data appears once Apple syncs it to the Mac, usually within minutes but sometimes hours.
+- If the phone's iCloud change token expires, the full re-fetch can't see days the Mac deleted outright in the meantime, so those stay on the phone.
 - Away from home, the phone gets history as of the Mac's last iCloud save (every 5 minutes while the Mac is awake). Without iCloud it shows its last synced copy.

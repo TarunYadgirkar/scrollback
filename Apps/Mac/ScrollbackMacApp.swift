@@ -52,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshLoop = Task { [model] in
             while !Task.isCancelled {
                 await model.refresh()
-                await cloudHost.upload()
+                cloudHost.uploadInBackground()
                 try? await Task.sleep(for: Self.refreshInterval)
             }
         }

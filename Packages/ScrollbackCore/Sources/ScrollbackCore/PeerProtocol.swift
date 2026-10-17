@@ -10,7 +10,7 @@ public enum PeerProtocol {
     static let clockSkewTolerance: TimeInterval = 120
     static let queue = DispatchQueue(label: "scrollback.peer")
 
-    static func withTimeout<T: Sendable>(
+    public static func withTimeout<T: Sendable>(
         _ limit: Duration,
         error timeoutError: some Error,
         _ operation: @escaping @Sendable () async throws -> T
