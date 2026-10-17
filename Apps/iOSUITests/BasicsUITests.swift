@@ -38,7 +38,17 @@ final class BasicsUITests: XCTestCase {
         add(shot)
     }
 
+    func testTodayListShowsStretches() {
+        XCTAssertFalse(app.staticTexts["By hour"].waitForExistence(timeout: 3), "Today's list still shows the Screen Time report")
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS '–'")).firstMatch
+        guard row.waitForExistence(timeout: 5) else { return }
+        reveal(row)
+        row.tap()
+        snap("today stretch expanded")
+    }
+
     func testTodayReportScrolls() {
+        app.buttons["Timeline"].tap()
         // iOS hands touches on a Screen Time report to Screen Time, so the report has to scroll itself.
         let byHour = app.staticTexts["By hour"]
         XCTAssertTrue(byHour.waitForExistence(timeout: Self.timeout), "Screen Time report never loaded")
@@ -78,7 +88,7 @@ final class BasicsUITests: XCTestCase {
     }
 
     func testTimelineFitsOnScreen() {
-        // The iPhone's live day shows stretch cards instead of the ribbon, so check the ribbon on the Mac.
+        // The iPhone's live day shows Screen Time's report instead of the ribbon, so check the ribbon on the Mac.
         button(startingWith: "Mac").tap()
         app.buttons["Timeline"].tap()
         XCTAssertTrue(button(startingWith: "Mac").waitForExistence(timeout: Self.timeout))
@@ -89,8 +99,8 @@ final class BasicsUITests: XCTestCase {
         ribbon?.swipeUp()
         ribbon?.swipeDown()
         button(startingWith: "iPhone").tap()
+        XCTAssertTrue(app.staticTexts["By hour"].waitForExistence(timeout: Self.timeout), "iPhone timeline today lost Screen Time's report")
         app.buttons["List"].tap()
-        XCTAssertTrue(app.staticTexts["By hour"].waitForExistence(timeout: Self.timeout))
     }
 
     func testRowsExpand() {

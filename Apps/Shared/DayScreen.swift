@@ -24,13 +24,9 @@ struct DayScreen: View {
     @ViewBuilder private var main: some View {
         switch model.viewMode {
         case .list:
-            if model.device == .iphone, model.isToday, let screenTimeToday {
-                liveToday(screenTimeToday)
-            } else {
-                StretchList(model: model) { top }
-            }
-        case .timeline where showsPhoneCards:
             StretchList(model: model) { top }
+        case .timeline where model.device == .iphone && model.isToday:
+            if let screenTimeToday { liveToday(screenTimeToday) } else { StretchList(model: model) { top } }
         case .timeline:
             VStack(alignment: .leading, spacing: 0) {
                 top
@@ -41,8 +37,10 @@ struct DayScreen: View {
         }
     }
 
-    /// Today on the phone: Screen Time's own report under a fixed header. Touches on the report go to
-    /// Screen Time rather than this app, so the page can't scroll from there; the report scrolls itself.
+    /// The phone's timeline today: Screen Time's own report, whose 24-hour grid is the only place the
+    /// phone's full live total can show (Apple keeps those numbers inside the extension). It sits under a
+    /// fixed header. Touches on the report go to Screen Time rather than this app, so the page can't
+    /// scroll from there; the report scrolls itself.
     /// The page is exactly one screen tall, so it only moves when pulled down from the header to refresh.
     private func liveToday(_ report: AnyView) -> some View {
         ScrollView {
@@ -94,17 +92,7 @@ struct DayScreen: View {
     /// recap there too, so it keeps only the tabs, the day and the view toggle. Ask stays on the list.
     private var isCompactTimeline: Bool {
         #if os(iOS)
-        model.viewMode == .timeline && !showsPhoneCards
-        #else
-        false
-        #endif
-    }
-
-    /// The phone's own day as it happens: the list belongs to Screen Time's report, and live doomscroll
-    /// steps read badly as ribbon bars, so its timeline shows them as stretch cards like the Mac's list.
-    private var showsPhoneCards: Bool {
-        #if os(iOS)
-        model.device == .iphone && model.isToday
+        model.viewMode == .timeline && !(model.device == .iphone && model.isToday)
         #else
         false
         #endif
