@@ -11,6 +11,7 @@ enum SQLValue {
     case text(String)
     case real(Double)
     case int(Int64)
+    case blob(Data)
     case null
 }
 
@@ -23,6 +24,11 @@ struct SQLRow {
 
     func real(_ column: Int32) -> Double { sqlite3_column_double(statement, column) }
     func int(_ column: Int32) -> Int64 { sqlite3_column_int64(statement, column) }
+
+    func blob(_ column: Int32) -> Data? {
+        guard let bytes = sqlite3_column_blob(statement, column) else { return nil }
+        return Data(bytes: bytes, count: Int(sqlite3_column_bytes(statement, column)))
+    }
 }
 
 final class SQLiteDatabase {
@@ -93,6 +99,7 @@ final class SQLiteDatabase {
         case .text(let s): sqlite3_bind_text(statement, index, s, -1, SQLITE_TRANSIENT)
         case .real(let d): sqlite3_bind_double(statement, index, d)
         case .int(let i): sqlite3_bind_int64(statement, index, i)
+        case .blob(let d): _ = d.withUnsafeBytes { sqlite3_bind_blob(statement, index, $0.baseAddress, Int32($0.count), SQLITE_TRANSIENT) }
         case .null: sqlite3_bind_null(statement, index)
         }
     }
