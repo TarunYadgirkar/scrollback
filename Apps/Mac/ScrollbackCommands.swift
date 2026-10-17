@@ -31,7 +31,7 @@ struct ScrollbackCommands: Commands {
             Divider()
             Button("Ask…") { model.requestAskFocus() }
                 .keyboardShortcut("k")
-                .disabled(!canBrowse)
+                .disabled(!canBrowse || Asker.availability == .unsupported)
             Button("Sync Now") { Task { await model.refresh() } }
                 .keyboardShortcut("r")
         }

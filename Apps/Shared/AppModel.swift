@@ -110,20 +110,27 @@ final class AppModel {
     func refresh() async {
         guard status != .syncing else { return }
         status = .syncing
+        let next: SyncStatus
+        let need: SetupNeed?
         do {
             let result = try await provider.refresh(into: store)
-            status = .synced(.now, note: result.warnings.first)
-            setupNeed = nil
+            next = .synced(.now, note: result.warnings.first)
+            need = nil
         } catch {
-            setupNeed = provider.setupNeed(for: error)
-            status = setupNeed.map(SyncStatus.needsSetup) ?? .failed(Self.explain(error))
+            need = provider.setupNeed(for: error)
+            next = need.map(SyncStatus.needsSetup) ?? .failed(Self.explain(error))
         }
+        // Reload first, so screens gated on "syncing with no data yet" don't flash an empty day in between.
         await reload()
+        setupNeed = need
+        status = next
     }
 
     /// A sentence for the user, not a Swift dump of the error.
     static func explain(_ error: any Error) -> String {
         if let message = (error as? LocalizedError)?.errorDescription { return message }
+        // Swift errors in Core describe themselves; Cocoa errors are better read through localizedDescription.
+        if !(type(of: error) is NSError.Type), let described = error as? any CustomStringConvertible { return described.description }
         return (error as NSError).localizedDescription
     }
 
@@ -202,6 +209,7 @@ final class AppModel {
     }
 
     func requestAskFocus() {
+        guard Asker.availability != .unsupported else { return }
         wantsAskFocus = true
     }
 

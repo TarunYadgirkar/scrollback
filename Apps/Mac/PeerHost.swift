@@ -48,7 +48,9 @@ final class PeerStatus {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "at \(time)" }
         if calendar.isDateInYesterday(date) { return "yesterday at \(time)" }
-        return date.formatted(.dateTime.weekday(.wide).hour().minute())
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: .now)).day ?? .max
+        if days < 7 { return "on " + date.formatted(.dateTime.weekday(.wide).hour().minute()) }
+        return "on " + date.formatted(.dateTime.month(.abbreviated).day().hour().minute())
     }
 }
 

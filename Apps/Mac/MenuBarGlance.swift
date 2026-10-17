@@ -43,7 +43,7 @@ struct MenuBarGlance: View {
             Text("Today").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
             if model.hasData {
                 readouts
-            } else if model.setupNeed == nil {
+            } else if model.setupNeed == nil, model.status == .idle || model.status == .syncing {
                 HStack(spacing: Space.s) {
                     ProgressView().controlSize(.small)
                     Text("Reading your app history…").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
