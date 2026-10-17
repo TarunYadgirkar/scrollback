@@ -22,7 +22,7 @@ A **binge** is a run of social apps where each hop happens within 2 minutes and 
 | --- | --- |
 | `Packages/ScrollbackCore` | SEGB decoder, sessionizer, binge detection, SQLite store, Ask (Apple's on-device model with tool calls), encrypted LAN sync |
 | `Apps/Mac` | Menu bar glance and full window. Reads Biome every 5 minutes and serves sessions to the iPhone |
-| `Apps/iOS` | Same timeline and Ask. Pulls sessions from the Mac over your Wi-Fi |
+| `Apps/iOS` | Same timeline and Ask. Pulls sessions from the Mac over your Wi-Fi, and from your private iCloud anywhere |
 | `scrollback` CLI | `swift run scrollback yesterday 19:00-20:00` or `swift run scrollback ask "when did I stop scrolling"` |
 
 ## Setup
@@ -34,11 +34,21 @@ A **binge** is a run of social apps where each hop happens within 2 minutes and 
 
 Ask needs Apple Intelligence turned on, on whichever device you use it.
 
+### iCloud history (once per container)
+
+1. In the developer portal, make sure the iCloud container `iCloud.com.tarunyadgirkar.scrollback` exists and both app IDs (`…scrollback` and `…scrollback.mac`) have iCloud with CloudKit and that container. Automatic signing usually does this on the next build with `-allowProvisioningUpdates`.
+2. `xcrun cktool save-token --type management`, then `scripts/cloudkit-schema.sh`.
+3. In CloudKit Console, deploy the schema to Production. Every build, USB or TestFlight, uses Production so the Mac and phone see the same database.
+
 ## Sync security
 
 The Mac and iPhone share a 32-byte key (`~/Library/Application Support/Scrollback/peer.key`, mode 0600), baked into the phone build at install time. Requests are HMAC-signed with a timestamp and can't be replayed. Responses are ChaChaPoly-encrypted and bound to the request. The server accepts four connections at a time and gives no response to unauthenticated requests.
 
+## iCloud history
+
+The Mac also saves its history to your own private iCloud database, one record per UTC day, re-sent only when that day changes. The phone fetches changed days whenever it opens, before trying the Mac on Wi-Fi, so history keeps arriving away from home. Each record's payload is in CloudKit's encrypted values, which are end-to-end encrypted with keys in your iCloud Keychain, so neither Apple nor Scrollback can read it. Only the Mac writes; the phone only reads. Nothing from the Screen Time extensions (live doomscroll milestones, the Today report) is ever written to iCloud; it stays on the phone.
+
 ## Known limits
 
 - iPhone data appears once Apple syncs it to the Mac, usually within minutes but sometimes hours.
-- Away from home Wi-Fi, the phone shows its last synced copy.
+- Away from home, the phone gets history as of the Mac's last iCloud save (every 5 minutes while the Mac is awake). Without iCloud it shows its last synced copy.

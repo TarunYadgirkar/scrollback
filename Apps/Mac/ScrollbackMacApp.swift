@@ -13,7 +13,7 @@ struct ScrollbackMacApp: App {
         .defaultSize(width: 1120, height: 860)
 
         MenuBarExtra {
-            MenuBarGlance(model: delegate.model, peerStatus: delegate.peerStatus)
+            MenuBarGlance(model: delegate.model, peerStatus: delegate.peerStatus, cloudStatus: delegate.cloudStatus)
         } label: {
             MenuBarLabel(report: delegate.model.today)
         }
@@ -31,8 +31,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     let model: AppModel
     let peerStatus = PeerStatus()
+    let cloudStatus = CloudStatus()
     private var refreshLoop: Task<Void, Never>?
     private var peerHost: PeerHost?
+    private var cloudHost: CloudHost?
 
     override init() {
         do {
@@ -45,9 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let cloudHost = CloudHost(store: model.store, status: cloudStatus)
+        self.cloudHost = cloudHost
         refreshLoop = Task { [model] in
             while !Task.isCancelled {
                 await model.refresh()
+                await cloudHost.upload()
                 try? await Task.sleep(for: Self.refreshInterval)
             }
         }

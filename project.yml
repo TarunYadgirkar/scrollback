@@ -34,6 +34,13 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         NSLocalNetworkUsageDescription: Scrollback sends your usage history to the Scrollback app on your iPhone.
         NSBonjourServices: [_scrollback._tcp]
+    entitlements:
+      path: Apps/Mac/ScrollbackMac.entitlements
+      properties:
+        # Production on every build, so the Mac and the phone (USB or TestFlight) share one database.
+        com.apple.developer.icloud-container-environment: Production
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.tarunyadgirkar.scrollback]
+        com.apple.developer.icloud-services: [CloudKit]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback.mac
