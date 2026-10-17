@@ -77,14 +77,17 @@ final class BasicsUITests: XCTestCase {
     }
 
     func testTimelineFitsOnScreen() {
+        // The iPhone's live day shows stretch cards instead of the ribbon, so check the ribbon on the Mac.
+        button(startingWith: "Mac").tap()
         app.buttons["Timeline"].tap()
-        XCTAssertTrue(button(startingWith: "iPhone").waitForExistence(timeout: Self.timeout))
-        XCTAssertTrue(button(startingWith: "iPhone").isHittable, "Timeline header pushed the tabs off screen")
+        XCTAssertTrue(button(startingWith: "Mac").waitForExistence(timeout: Self.timeout))
+        XCTAssertTrue(button(startingWith: "Mac").isHittable, "Timeline header pushed the tabs off screen")
         let ribbon = app.scrollViews.allElementsBoundByIndex.max { $0.frame.height < $1.frame.height }
         XCTAssertGreaterThan(ribbon?.frame.height ?? 0, 250, "Timeline has no room to show the day")
         snap("timeline")
         ribbon?.swipeUp()
         ribbon?.swipeDown()
+        button(startingWith: "iPhone").tap()
         app.buttons["List"].tap()
         XCTAssertTrue(app.staticTexts["By hour"].waitForExistence(timeout: Self.timeout))
     }
@@ -109,6 +112,33 @@ final class BasicsUITests: XCTestCase {
         snap("ask answer")
         dismiss.tap()
         XCTAssertTrue(chip.waitForExistence(timeout: Self.timeout))
+    }
+
+    func testChangeDoomscrollAppsCancels() {
+        let change = app.buttons["Change doomscroll apps"]
+        XCTAssertTrue(change.waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on the main screen")
+        let before = change.value as? String
+        change.tap()
+        let cancel = app.navigationBars.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: Self.timeout), "Doomscroll app picker never opened")
+        snap("doomscroll picker")
+        cancel.tap()
+        let back = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: change)
+        wait(for: [back], timeout: Self.timeout)
+        XCTAssertEqual(change.value as? String, before, "Closing the picker without picking changed the apps")
+        snap("picker closed")
+    }
+
+    func testChangeDoomscrollAppsInEveryView() {
+        app.terminate()
+        app.launchArguments = ["-viewMode", "timeline", "-device", "iphone"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Change doomscroll apps"].waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on the timeline")
+        snap("timeline doomscroll apps")
+        app.buttons["List"].tap()
+        app.buttons["Previous day"].tap()
+        XCTAssertTrue(app.buttons["Change doomscroll apps"].waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on a past day")
+        snap("past day doomscroll apps")
     }
 
     func testLeaveAndComeBack() {
