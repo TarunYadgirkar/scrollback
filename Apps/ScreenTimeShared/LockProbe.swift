@@ -4,6 +4,7 @@ import ScrollbackCore
 /// Tells whether the phone is unlocked, from inside an extension that has no UIApplication.
 /// The app writes a file only readable while unlocked; a threshold that fires while it's unreadable
 /// can't be someone scrolling (Screen Time fires phantom thresholds on the charger).
+/// Best effort: it needs a passcode, and iOS keeps the file readable for about 10 seconds after locking.
 enum LockProbe {
     private static var url: URL? { SharedContainer.url?.appending(path: "unlock-probe") }
 

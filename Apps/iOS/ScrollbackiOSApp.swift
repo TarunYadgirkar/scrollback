@@ -79,6 +79,7 @@ struct IOSRoot: View {
             }
             // The monitor nudges after 20 nonstop minutes; iOS only asks once, so this is a no-op after that.
             LockProbe.install()
+            guard !ProcessInfo.processInfo.arguments.contains("-uiTesting") else { return }
             _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
         }
     }

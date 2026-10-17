@@ -29,17 +29,24 @@ final class Monitor: DeviceActivityMonitor {
     }
 
     private static func nudgeIfDue(store: SessionStore, now: Date) async {
-        guard LockProbe.isUnlocked else { return }
         let defaults = SharedContainer.defaults
-        let lastNudged = defaults?.object(forKey: lastNudgedKey) as? Date
-        let today = Calendar.current.startOfDay(for: now).addingTimeInterval(-1)
-        guard let milestones = try? await store.milestones(after: today),
-              let run = DoomscrollNudge.due(milestones: milestones, now: now, lastNudged: lastNudged)
+        // A step while locked is a phantom (Screen Time fires them on the charger): remember it so
+        // neither it nor anything before it counts toward a run, and don't nudge.
+        guard LockProbe.isUnlocked else {
+            defaults?.set(now, forKey: lastLockedKey)
+            return
+        }
+        guard let milestones = try? await store.milestones(after: now.addingTimeInterval(-DoomscrollNudge.lookback)),
+              let run = DoomscrollNudge.due(
+                  milestones: milestones, now: now,
+                  lastNudged: defaults?.object(forKey: lastNudgedKey) as? Date,
+                  lastLocked: defaults?.object(forKey: lastLockedKey) as? Date
+              )
         else { return }
 
         let content = UNMutableNotificationContent()
         content.title = "\(run.minutes) minutes of scrolling"
-        content.body = "Nonstop since \(run.start.formatted(date: .omitted, time: .shortened))."
+        content.body = "Nonstop since about \(run.start.formatted(date: .omitted, time: .shortened))."
         content.sound = .default
         content.threadIdentifier = "doomscroll"
         // One identifier per run, so a duplicate callback replaces the nudge instead of stacking a second.
@@ -53,5 +60,6 @@ final class Monitor: DeviceActivityMonitor {
     }
 
     static let lastNudgedKey = "doomscrollNudge.lastRunStart"
+    static let lastLockedKey = "doomscrollNudge.lastLockedStep"
     static let callbackTimeout: DispatchTimeInterval = .seconds(5)
 }
