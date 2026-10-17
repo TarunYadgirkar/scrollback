@@ -19,8 +19,8 @@ struct RecapStrip: View {
     @ViewBuilder private var readouts: some View {
         Readout(label: "Screen time", value: Format.duration(report.total(on: device)))
         Readout(label: "Social apps", value: Format.duration(report.socialTime(on: device)), isSignal: report.socialTime(on: device) > 0)
-        if let longest = binges.max(by: { $0.span < $1.span }) {
-            Readout(label: "Longest binge", value: Format.duration(longest.span), detail: longest.start.shortClock, isSignal: true)
+        if let longest = binges.max(by: { $0.activeTime < $1.activeTime }) {
+            Readout(label: "Longest binge", value: Format.duration(longest.activeTime), detail: longest.start.shortClock, isSignal: true)
         } else if let longest = stretches.max(by: { $0.span < $1.span }) {
             Readout(label: "Longest stretch", value: Format.duration(longest.span), detail: longest.start.shortClock)
         } else {

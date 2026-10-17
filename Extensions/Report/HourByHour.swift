@@ -38,17 +38,10 @@ nonisolated struct HourByHour: Sendable {
     }
 }
 
-nonisolated struct HourByHourScene: DeviceActivityReportScene {
-    let context: DeviceActivityReport.Context = .hourByHour
-    let content: (HourByHour) -> HourByHourView
-
-    func makeConfiguration(representing data: DeviceActivityResults<DeviceActivityData>) async -> HourByHour {
-        await HourByHour.build(from: data)
-    }
-}
-
+/// The whole day as a 4×6 grid, so the card is the same height at 8am and 11pm.
+/// Each hour shows its total and the apps that took it; social-heavy hours read in signal pink.
 struct HourByHourView: View {
-    static let appsPerHour = 4
+    static let appsPerHour = 3
 
     let report: HourByHour
 
@@ -57,61 +50,50 @@ struct HourByHourView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            if report.hours.isEmpty {
-                Text("No iPhone use yet today.").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
+        Grid(horizontalSpacing: ScreenTimeCardSize.hourSpacing, verticalSpacing: ScreenTimeCardSize.hourSpacing) {
+            ForEach(0..<ScreenTimeCardSize.hourRows, id: \.self) { row in
+                GridRow {
+                    ForEach(0..<ScreenTimeCardSize.hourColumns, id: \.self) { column in
+                        tile(row * ScreenTimeCardSize.hourColumns + column)
+                    }
+                }
             }
-            ForEach(report.hours) { hour in
-                row(hour)
+        }
+    }
+
+    private func tile(_ index: Int) -> some View {
+        let start = Calendar.current.date(bySettingHour: index, minute: 0, second: 0, of: .now) ?? .now
+        let hour = report.hours.first { Calendar.current.component(.hour, from: $0.start) == index }
+        let isCurrent = Calendar.current.component(.hour, from: .now) == index
+        let isFuture = start > .now
+        return VStack(alignment: .leading, spacing: Space.xxs) {
+            HStack(spacing: Space.xs) {
+                Text(start.hourLabel)
+                    .font(TypeScale.monoSmall.weight(isCurrent ? .semibold : .regular))
+                    .foregroundStyle(isCurrent ? Palette.ink : Palette.inkMuted)
+                if isCurrent { Circle().fill(Palette.messaging).frame(width: 5, height: 5) }
+            }
+            if let hour {
+                Text(Format.duration(hour.total))
+                    .font(TypeScale.title.weight(.bold))
+                    .foregroundStyle(isSocialHeavy(hour) ? Palette.signal : Palette.ink)
+                HStack(spacing: Space.xxs) {
+                    ForEach(hour.apps.prefix(Self.appsPerHour)) { app in
+                        AppTokenIcon(token: app.token, category: app.category, size: 16)
+                    }
+                }
             }
             Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .lineLimit(1)
+        .padding(Space.s)
+        .frame(maxWidth: .infinity, minHeight: ScreenTimeCardSize.hourTile, maxHeight: ScreenTimeCardSize.hourTile, alignment: .topLeading)
+        .background(hour == nil ? Palette.ink.opacity(isFuture ? 0.02 : 0.04) : Palette.raised, in: RoundedRectangle(cornerRadius: Radius.control))
+        .opacity(isFuture ? 0.5 : 1)
     }
 
-    private func row(_ hour: HourByHour.Hour) -> some View {
-        let isCurrent = Calendar.current.isDate(hour.start, equalTo: .now, toGranularity: .hour)
-        return VStack(alignment: .leading, spacing: Space.xs + Space.xxs) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(isCurrent ? "\(hour.start.hourLabel) – now" : "\(hour.start.hourLabel) – \(hour.start.addingTimeInterval(3600).hourLabel)")
-                    .font(TypeScale.mono.weight(isCurrent ? .semibold : .regular))
-                    .foregroundStyle(isCurrent ? Palette.ink : Palette.inkMuted)
-                if isCurrent {
-                    Circle().fill(Palette.messaging).frame(width: 6, height: 6)
-                }
-                Spacer()
-                Text(Format.duration(hour.total)).font(TypeScale.readoutSmall).foregroundStyle(Palette.ink)
-            }
-            HStack(spacing: Space.m) {
-                ForEach(hour.apps.prefix(Self.appsPerHour)) { app in
-                    HStack(spacing: Space.xs) {
-                        AppTokenIcon(token: app.token, category: app.category, size: 18)
-                        Text(Format.duration(app.time)).font(TypeScale.mono).foregroundStyle(Palette.ink)
-                    }
-                }
-                if hour.apps.count > Self.appsPerHour {
-                    Text("+\(hour.apps.count - Self.appsPerHour)").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
-                }
-            }
-            .lineLimit(1)
-            GeometryReader { proxy in
-                let used = max(hour.apps.reduce(0) { $0 + $1.time }, 1)
-                let usable = proxy.size.width - CGFloat(max(0, hour.apps.count - 1))
-                HStack(spacing: 1) {
-                    ForEach(hour.apps) { app in
-                        Rectangle()
-                            .fill(Palette.category(app.category))
-                            .frame(width: max(1, usable * app.time / used))
-                    }
-                }
-            }
-            .frame(height: 4)
-            .clipShape(Capsule())
-        }
-        .padding(Space.m)
-        .frame(height: HourByHourView.rowHeight, alignment: .top)
-        .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.card))
+    private func isSocialHeavy(_ hour: HourByHour.Hour) -> Bool {
+        let social = hour.apps.filter { $0.category == .social }.reduce(0) { $0 + $1.time }
+        return social > hour.total / 2
     }
-
-    static let rowHeight: CGFloat = 92
 }

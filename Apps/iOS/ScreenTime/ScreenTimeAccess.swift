@@ -1,3 +1,4 @@
+import Combine
 import FamilyControls
 import Foundation
 import Observation
@@ -17,6 +18,14 @@ final class ScreenTimeAccess {
 
     var isApproved: Bool { status == .approved }
     var hasPickedApps: Bool { !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty }
+
+    /// Screen Time loads the saved permission a moment after launch, so the first read can say
+    /// "not determined" for an app that's approved. Follow Apple's value instead of trusting that read.
+    func followStatus() async {
+        for await latest in AuthorizationCenter.shared.$authorizationStatus.values {
+            status = latest
+        }
+    }
 
     func request() async {
         do {

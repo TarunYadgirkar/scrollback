@@ -3,8 +3,7 @@ import ScrollbackCore
 
 struct DayScreen: View {
     @Bindable var model: AppModel
-    @Environment(\.liveToday) private var liveToday
-    @Environment(\.hourByHour) private var hourByHour
+    @Environment(\.screenTimeToday) private var screenTimeToday
 
     var body: some View {
         #if os(macOS)
@@ -22,7 +21,11 @@ struct DayScreen: View {
     @ViewBuilder private var main: some View {
         switch model.viewMode {
         case .list:
-            StretchList(model: model) { top }
+            if model.device == .iphone, model.isToday, let screenTimeToday {
+                liveToday(screenTimeToday)
+            } else {
+                StretchList(model: model) { top }
+            }
         case .timeline:
             VStack(alignment: .leading, spacing: 0) {
                 top
@@ -33,28 +36,49 @@ struct DayScreen: View {
         }
     }
 
-    private var top: some View {
+    /// Today on the phone: Screen Time's own report under a fixed header. Touches on the report go to
+    /// Screen Time rather than this app, so the page can't scroll from there; the report scrolls itself.
+    private func liveToday(_ report: AnyView) -> some View {
         VStack(alignment: .leading, spacing: Space.l) {
             DeviceSwitcher(model: model)
             DayHeader(model: model)
             AskBar(model: model)
-            if model.device == .iphone, model.isToday, let liveToday {
-                liveToday
-            } else {
+            ActivityHeader(model: model)
+            report
+        }
+        .padding(.horizontal, Space.l)
+        .padding(.top, Space.m)
+        .animation(Motion.quick, value: model.askState)
+    }
+
+    private var top: some View {
+        VStack(alignment: .leading, spacing: Space.l) {
+            DeviceSwitcher(model: model)
+            DayHeader(model: model)
+            if !isCompactTimeline {
+                AskBar(model: model)
                 RecapStrip(report: model.report, device: model.device)
                 if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
             }
             ActivityHeader(model: model)
-            if model.device == .iphone, model.isToday, let hourByHour {
-                hourByHour
-                if model.isTrackingLive {
-                    Text("Doomscroll apps, in 5-minute steps")
-                        .font(TypeScale.label.weight(.semibold))
-                        .foregroundStyle(Palette.inkMuted)
-                }
+            if model.device == .iphone, model.isToday, model.isTrackingLive {
+                Text("Doomscroll apps show up live in 5-minute steps. Everything else fills in from your Mac.")
+                    .font(TypeScale.label)
+                    .foregroundStyle(Palette.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .animation(Motion.quick, value: model.askState)
+    }
+
+    /// The timeline's header stays fixed above the ribbon, and a phone screen can't fit Ask and the
+    /// recap there too, so it keeps only the tabs, the day and the view toggle. Ask stays on the list.
+    private var isCompactTimeline: Bool {
+        #if os(iOS)
+        model.viewMode == .timeline
+        #else
+        false
+        #endif
     }
 }
 
@@ -107,8 +131,6 @@ private struct TimelinePane: View {
 }
 
 extension EnvironmentValues {
-    /// The phone's live Screen Time card, when access is granted. Nil on the Mac.
-    @Entry var liveToday: AnyView?
-    /// Today's hours on the phone, newest first, from Screen Time.
-    @Entry var hourByHour: AnyView?
+    /// The phone's live Screen Time report for today, when access is granted. Nil on the Mac.
+    @Entry var screenTimeToday: AnyView?
 }

@@ -7,8 +7,11 @@ let ink = NSColor(srgbRed: 0x16 / 255, green: 0x18 / 255, blue: 0x1B / 255, alph
 let session = NSColor(srgbRed: 0x4A / 255, green: 0x4D / 255, blue: 0x53 / 255, alpha: 1)
 let signal = NSColor(srgbRed: 0xF0 / 255, green: 0x51 / 255, blue: 0x7F / 255, alpha: 1)
 
-let image = NSImage(size: NSSize(width: size, height: size))
-image.lockFocus()
+// App Store icons must be opaque. RGBX keeps the bitmap alpha-free; a 3-channel
+// NSBitmapImageRep can't back a graphics context, which silently left the icon black.
+let context = CGContext(data: nil, width: Int(size), height: Int(size), bitsPerComponent: 8, bytesPerRow: 0,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
 ink.setFill()
 NSRect(x: 0, y: 0, width: size, height: size).fill()
 
@@ -36,14 +39,6 @@ bracket.lineCapStyle = .round
 bracket.lineJoinStyle = .round
 signal.setStroke()
 bracket.stroke()
-image.unlockFocus()
 
-let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size), pixelsHigh: Int(size), bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
-rep.size = image.size
-NSGraphicsContext.saveGraphicsState()
-NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-image.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
-NSGraphicsContext.restoreGraphicsState()
-// App Store icons must be opaque, so the bitmap has no alpha channel at all.
-let data = rep.representation(using: .png, properties: [:])!
-try! data.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
+let png = NSBitmapImageRep(cgImage: context.makeImage()!).representation(using: .png, properties: [:])!
+try! png.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
