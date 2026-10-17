@@ -38,15 +38,20 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback.mac
         PRODUCT_NAME: Scrollback
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_APP_SANDBOX: NO
   ScrollbackiOS:
     type: application
     platform: iOS
-    sources: [Apps/Shared, Apps/iOS]
+    sources: [Apps/Shared, Apps/iOS, Apps/ScreenTimeShared]
     dependencies:
       - package: ScrollbackCore
         product: ScrollbackCore
+      - target: ScrollbackReport
+      - target: ScrollbackMonitor
+    scheme:
+      testTargets: [ScrollbackiOSUITests]
     info:
       path: Apps/iOS/Info.plist
       properties:
@@ -54,6 +59,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSLocalNetworkUsageDescription: Scrollback looks for your Mac on this Wi-Fi to fetch your usage history.
         NSBonjourServices: [_scrollback._tcp]
@@ -62,4 +68,68 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback
         PRODUCT_NAME: Scrollback
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_ENTITLEMENTS: Apps/iOS/Scrollback.entitlements
+  ScrollbackReport:
+    type: extensionkit-extension
+    platform: iOS
+    sources: [Extensions/Report, Apps/ScreenTimeShared, Apps/Shared/Theme.swift]
+    dependencies:
+      - package: ScrollbackCore
+        product: ScrollbackCore
+    info:
+      path: Extensions/Report/Info.plist
+      properties:
+        CFBundleDisplayName: Scrollback Report
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        EXAppExtensionAttributes:
+          EXExtensionPointIdentifier: com.apple.deviceactivityui.report-extension
+    entitlements:
+      path: Extensions/Report/Report.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback.report
+        TARGETED_DEVICE_FAMILY: "1"
+  ScrollbackMonitor:
+    type: app-extension
+    platform: iOS
+    sources: [Extensions/Monitor, Apps/ScreenTimeShared]
+    dependencies:
+      - package: ScrollbackCore
+        product: ScrollbackCore
+    info:
+      path: Extensions/Monitor/Info.plist
+      properties:
+        CFBundleDisplayName: Scrollback Monitor
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.deviceactivity.monitor-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).Monitor
+    entitlements:
+      path: Extensions/Monitor/Monitor.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups: [group.com.example.scrollback]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback.monitor
+        TARGETED_DEVICE_FAMILY: "1"
+  ScrollbackiOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Apps/iOSUITests]
+    dependencies:
+      - target: ScrollbackiOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.scrollback.uitests
+        # XCTest's setUp isn't main-actor isolated; Swift 6 checks only get in the way of UI test code.
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES

@@ -27,12 +27,26 @@ public actor SessionStore {
                 is_start INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS live_events_at ON live_events(at);
+            CREATE TABLE IF NOT EXISTS milestones (
+                at REAL NOT NULL,
+                minutes INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS milestones_at ON milestones(at);
             """)
     }
 
     public static func defaultURL() -> URL {
-        URL.applicationSupportDirectory.appending(path: "Scrollback/sessions.sqlite")
+        #if os(iOS)
+        if let shared = SharedContainer.url {
+            let url = shared.appending(path: "Library/Application Support/Scrollback/sessions.sqlite")
+            SharedContainer.moveLegacyStore(from: legacyURL, to: url)
+            return url
+        }
+        #endif
+        return legacyURL
     }
+
+    static var legacyURL: URL { URL.applicationSupportDirectory.appending(path: "Scrollback/sessions.sqlite") }
 
     /// Inserts new sessions. An existing row is only rewritten (and marked
     /// unsynced) when its end time or open reason actually changed.
@@ -80,6 +94,17 @@ public actor SessionStore {
             [.text(event.bundleID), .real(event.date.timeIntervalSince1970), .int(event.isStart ? 1 : 0)]
         )
         try db.run("DELETE FROM live_events WHERE at < ?", [.real(event.date.addingTimeInterval(-LiveLog.retention).timeIntervalSince1970)])
+    }
+
+    public func appendMilestone(_ milestone: Milestone) throws {
+        try db.run("INSERT INTO milestones (at, minutes) VALUES (?, ?)", [.real(milestone.at.timeIntervalSince1970), .int(Int64(milestone.minutes))])
+        try db.run("DELETE FROM milestones WHERE at < ?", [.real(milestone.at.addingTimeInterval(-LiveLog.retention).timeIntervalSince1970)])
+    }
+
+    public func milestones(after date: Date) throws -> [Milestone] {
+        try db.query("SELECT at, minutes FROM milestones WHERE at > ? ORDER BY at", [.real(date.timeIntervalSince1970)]) { row in
+            Milestone(at: Date(timeIntervalSince1970: row.real(0)), minutes: Int(row.int(1)))
+        }
     }
 
     public func liveEvents(after date: Date) throws -> [FocusEvent] {

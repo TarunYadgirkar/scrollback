@@ -129,6 +129,24 @@ import Testing
         #expect(stretches[0].apps.map(\.bundleID).count == 3)
     }
 
+    @Test func findsEveryBingeInsideAStretch() {
+        let sessions = [
+            session("com.burbn.instagram", .at(19, 42), .at(19, 42, 30)),
+            session("com.burbn.instagram", .at(19, 44), .at(19, 47, 30)),
+            session("com.google.Gmail", .at(19, 48), .at(19, 51)),
+            session("com.burbn.instagram", .at(19, 52), .at(20, 2)),
+            session("com.withopal.opal", .at(20, 3), .at(20, 5)),
+            session("com.burbn.instagram", .at(20, 5, 30), .at(20, 17)),
+        ]
+        let report = ActivityReport(window: DateInterval(start: .at(0, 0), duration: 86_400), sessions: sessions)
+        let stretch = try! #require(StretchBuilder.stretches(in: sessions, device: .iphone).first)
+
+        let binges = report.binges(overlapping: stretch)
+        let bingeTime: TimeInterval = binges.map(\.activeTime).reduce(0, +)
+        #expect(binges.count == 3)
+        #expect(bingeTime == 25.5 * 60)
+    }
+
     @Test func dropsGlancesAndOtherDevices() {
         let stretches = StretchBuilder.stretches(in: [
             session("com.apple.mobiletimer", .at(8, 0), .at(8, 0, 5)),
@@ -201,5 +219,47 @@ import Testing
         let today = report(day: 11, [("com.burbn.instagram", .at(21, 0), .at(21, 50))])
         let text = Headline.text(for: today, device: .iphone, baseline: nil, isToday: false)
         #expect(text == "50m of social, mostly 8pm–10pm." || text == "50m of social, mostly 9pm–11pm.")
+    }
+}
+
+@Suite struct MilestoneTests {
+    @Test func backToBackStepsBecomeOneSitting() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(19, 0), minutes: 0),
+            Milestone(at: .at(19, 30), minutes: 5),
+            Milestone(at: .at(19, 35), minutes: 10),
+            Milestone(at: .at(19, 41), minutes: 15),
+        ])
+
+        #expect(sessions.count == 3)
+        #expect(sessions[0].start == .at(19, 25))
+        #expect(sessions[1].start == .at(19, 30))
+        #expect(sessions[2].start == .at(19, 35))
+        #expect(BingeDetector.binges(in: sessions).first?.span == TimeInterval(16 * 60))
+    }
+
+    @Test func ignoresRestartsWhereMinutesGoBackwards() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(23, 50), minutes: 40),
+            Milestone(at: .at(0, 0, day: 12), minutes: 0),
+            Milestone(at: .at(0, 6, day: 12), minutes: 5),
+        ])
+
+        #expect(sessions.count == 1)
+        #expect(sessions[0].end == .at(0, 6, day: 12))
+    }
+
+    @Test func coarseLateStepsKeepTheirFullMinutes() {
+        let sessions = MilestoneTimeline.sessions(from: [
+            Milestone(at: .at(20, 0), minutes: 240),
+            Milestone(at: .at(20, 15), minutes: 255),
+            Milestone(at: .at(22, 0), minutes: 270),
+        ])
+
+        let total: TimeInterval = sessions.map(\.duration).reduce(0, +)
+        #expect(sessions.count == 2)
+        #expect(sessions[0].start == .at(20, 0))
+        #expect(sessions[1].start == .at(21, 45))
+        #expect(total == TimeInterval(30 * 60))
     }
 }

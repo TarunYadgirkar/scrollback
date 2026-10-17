@@ -79,6 +79,7 @@ public enum AppCatalog {
         "com.google.GoogleMobile": Entry(name: "Google", category: .other),
         "com.openai.codex": Entry(name: "Codex", category: .work),
         "com.apple.Preview": Entry(name: "Preview", category: .other),
+        "scrollback.doomscroll": Entry(name: "Doomscroll apps", category: .social),
         "com.example.scrollback": Entry(name: "Scrollback", category: .other),
         "com.example.scrollback.mac": Entry(name: "Scrollback", category: .other),
         "com.apple.mobilesafari": Entry(name: "Safari", category: .other),
