@@ -43,18 +43,27 @@ public struct DoomscrollToday: Sendable, Equatable {
         self.asOf = asOf
     }
 
-    /// Adds up every rise in minutes that landed on `now`'s day. A restart drops back to 0 and adds nothing,
-    /// so a mid-day restart keeps what was counted before it. Uses the steps themselves, not session lengths,
-    /// which can run longer than the minutes they hold.
+    /// Adds up the steps reached on `now`'s day. Screen Time's counters start over at midnight and at each
+    /// restart (a 0 milestone), so each run counts up from 0 and a mid-day restart keeps what came before it.
+    /// Counting from the run's highest step, not the previous row, keeps a late or repeated callback from
+    /// adding anything twice. Uses the steps themselves, not session lengths, which can run longer than their minutes.
     public static func from(_ milestones: [Milestone], now: Date = .now, calendar: Calendar = .current) -> DoomscrollToday {
         let dayStart = calendar.startOfDay(for: now)
-        let sorted = milestones.sorted { $0.at < $1.at }
+        var runStart = dayStart
+        var runHigh = 0
         var minutes = 0
         var asOf: Date?
-        for (previous, current) in zip(sorted, sorted.dropFirst())
-        where current.at >= dayStart && current.at <= now && current.minutes > previous.minutes {
-            minutes += current.minutes - previous.minutes
-            asOf = current.at
+        for milestone in milestones.sorted(by: { $0.at < $1.at }) where milestone.at >= dayStart && milestone.at <= now {
+            if milestone.minutes == 0 {
+                runStart = milestone.at
+                runHigh = 0
+                continue
+            }
+            // More minutes than the run has lasted is a callback left over from before it (yesterday's, say).
+            guard milestone.minutes > runHigh, TimeInterval(milestone.minutes) * 60 <= milestone.at.timeIntervalSince(runStart) + 60 else { continue }
+            minutes += milestone.minutes - runHigh
+            runHigh = milestone.minutes
+            asOf = milestone.at
         }
         return DoomscrollToday(minutes: minutes, asOf: asOf)
     }

@@ -38,8 +38,8 @@ struct DoomscrollEntry: TimelineEntry, Sendable {
 
     static func load(now: Date) async -> DoomscrollEntry {
         let calendar = Calendar.current
-        // From yesterday, so the step before today's first one is there to measure from.
-        let since = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(-2 * 86_400)
+        // A second early, so a 0 written right at midnight is included.
+        let since = calendar.startOfDay(for: now).addingTimeInterval(-1)
         var milestones: [Milestone] = []
         if let store = try? SessionStore(url: SessionStore.defaultURL()) {
             milestones = (try? await store.milestones(after: since)) ?? []
@@ -57,7 +57,7 @@ struct DoomscrollProvider: AppIntentTimelineProvider {
         context.isPreview ? .sample : await DoomscrollEntry.load(now: .now)
     }
 
-    /// The monitor asks for a reload at every step, so there's no polling. The second entry
+    /// The monitor asks for a reload as steps land (at most every 15 minutes), so there's no polling. The second entry
     /// zeroes the count at midnight even if nothing wakes the widget then.
     func timeline(for configuration: DoomscrollWidgetIntent, in context: Context) async -> Timeline<DoomscrollEntry> {
         let now = Date.now

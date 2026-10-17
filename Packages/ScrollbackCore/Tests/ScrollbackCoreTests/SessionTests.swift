@@ -309,6 +309,29 @@ import Testing
         #expect(today == DoomscrollToday(minutes: 0, asOf: nil))
     }
 
+    @Test func countsFromZeroWhenTheMidnightMarkerIsMissing() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(23, 50, day: 10), minutes: 20),
+            Milestone(at: .at(8, 0), minutes: 25),
+            Milestone(at: .at(8, 6), minutes: 30),
+        ], now: .at(9, 0))
+
+        #expect(today.minutes == 30)
+    }
+
+    @Test func ignoresRepeatedAndLeftoverCallbacks() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(0, 0), minutes: 0),
+            Milestone(at: .at(0, 0, 30), minutes: 240),
+            Milestone(at: .at(9, 0), minutes: 10),
+            Milestone(at: .at(9, 1), minutes: 5),
+            Milestone(at: .at(9, 6), minutes: 15),
+        ], now: .at(10, 0))
+
+        #expect(today.minutes == 15)
+        #expect(today.asOf == .at(9, 6))
+    }
+
     @Test func countsCoarseLateStepsInFull() {
         let today = DoomscrollToday.from([
             Milestone(at: .at(0, 0), minutes: 0),
