@@ -157,7 +157,7 @@ public struct CloudHistoryUploader: Sendable {
                       let sessions = try? CloudHistory.unpack(payload, version: version)
                 else { continue }
                 let cloudDigest = CloudHistory.digest(of: sessions.filter { day.contains($0.start) })
-                try await store.upsert(sessions.filter { day.contains($0.start) })
+                try await store.insertMissing(sessions.filter { day.contains($0.start) })
                 // A day iCloud already has exactly as this store now does needn't be sent back.
                 let merged = CloudHistory.digest(of: try await store.sessions(startingIn: day))
                 if merged == cloudDigest { try await store.markCloudUploaded(day, digest: merged, ifStill: merged) }

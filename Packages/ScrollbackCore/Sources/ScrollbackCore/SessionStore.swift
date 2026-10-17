@@ -239,11 +239,12 @@ public actor SessionStore {
         try db.run("DELETE FROM cloud_dirty WHERE day = ?", [.int(day.number)])
     }
 
-    /// Forgets what iCloud holds, so every day is sent again (after the zone was deleted).
+    /// Forgets what iCloud holds, so every day is sent again (after the zone was deleted). The
+    /// signed-in account is kept, so a pause set right after this survives the next account check.
     public func resetCloudUploads() throws {
         try db.execute("""
             DELETE FROM cloud_days;
-            DELETE FROM cloud_state;
+            DELETE FROM cloud_state WHERE key <> 'account';
             INSERT OR IGNORE INTO cloud_dirty (day) SELECT DISTINCT CAST(start / 86400 AS INTEGER) FROM sessions;
             """)
     }
@@ -253,16 +254,34 @@ public actor SessionStore {
     @discardableResult
     public func replaceCloudDay(_ day: CloudDay, with sessions: [Session], asOf: Date = .distantFuture) throws -> Int {
         let before = try count()
+        let incoming = sessions.filter { day.contains($0.start) }
+        let ids = String(decoding: try JSONEncoder().encode(incoming.map(\.id)), as: UTF8.self)
         try db.transaction {
+            // Rows the record carries are left for the upsert below, so a longer end survives.
             try db.run(
-                "DELETE FROM sessions WHERE start >= ? AND start < ? AND start <= ?",
-                [.real(day.start.timeIntervalSince1970), .real(day.end.timeIntervalSince1970), .real(min(asOf, day.end).timeIntervalSince1970)]
+                "DELETE FROM sessions WHERE start >= ? AND start < ? AND start <= ? AND id NOT IN (SELECT value FROM json_each(?))",
+                [.real(day.start.timeIntervalSince1970), .real(day.end.timeIntervalSince1970), .real(min(asOf, day.end).timeIntervalSince1970), .text(ids)]
             )
-            for s in sessions where day.contains(s.start) {
+            for s in incoming {
                 try db.run("""
                     INSERT INTO sessions (id, device, bundle_id, start, end, reason, synced) VALUES (?, ?, ?, ?, ?, ?, 1)
                     ON CONFLICT(id) DO UPDATE SET end = MAX(sessions.end, excluded.end), reason = excluded.reason, synced = 1
                     """, Self.values(for: s))
+            }
+        }
+        return try count() - before
+    }
+
+    /// Adds sessions this store doesn't have yet, leaving existing rows exactly as they are.
+    @discardableResult
+    public func insertMissing(_ sessions: [Session]) throws -> Int {
+        let before = try count()
+        try db.transaction {
+            for s in sessions {
+                try db.run(
+                    "INSERT INTO sessions (id, device, bundle_id, start, end, reason, synced) VALUES (?, ?, ?, ?, ?, ?, 0) ON CONFLICT(id) DO NOTHING",
+                    Self.values(for: s)
+                )
             }
         }
         return try count() - before
