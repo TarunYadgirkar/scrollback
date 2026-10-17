@@ -82,6 +82,7 @@ public enum AppCatalog {
         "scrollback.doomscroll": Entry(name: "Doomscroll apps", category: .social),
         "com.tarunyadgirkar.scrollback": Entry(name: "Scrollback", category: .other),
         "com.tarunyadgirkar.scrollback.mac": Entry(name: "Scrollback", category: .other),
+        "com.tarunyadgirkar.scrollback.macos": Entry(name: "Scrollback", category: .other),
         "com.apple.mobilesafari": Entry(name: "Safari", category: .other),
         "com.apple.Safari": Entry(name: "Safari", category: .other),
         "com.google.Chrome": Entry(name: "Chrome", category: .other),

@@ -34,6 +34,8 @@ struct MenuBarLabel: View {
 struct MenuBarGlance: View {
     let model: AppModel
     let peerStatus: PeerStatus
+    let cloudStatus: CloudStatus
+    let resumeCloudSync: () -> Void
     @Environment(\.openWindow) private var openWindow
     @State private var loginStatus = SMAppService.mainApp.status
     @State private var loginError: String?
@@ -58,6 +60,14 @@ struct MenuBarGlance: View {
                     .foregroundStyle(Palette.inkMuted)
                     .lineLimit(2)
                     .help(peerStatus.text)
+                Text(cloudStatus.text)
+                    .font(TypeScale.label)
+                    .foregroundStyle(Palette.inkMuted)
+                    .lineLimit(2)
+                    .help(cloudStatus.text)
+                if cloudStatus.isPaused {
+                    Button("Turn iCloud sync back on", action: resumeCloudSync).controlSize(.small)
+                }
             }
             loginToggle
             HStack {
