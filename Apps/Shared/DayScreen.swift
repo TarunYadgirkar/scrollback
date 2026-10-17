@@ -55,7 +55,7 @@ struct DayScreen: View {
             .containerRelativeFrame(.vertical, alignment: .top)
         }
         .scrollBounceBehavior(.always, axes: .vertical)
-        .refreshable {
+        .refreshable { @MainActor in
             await model.refresh()
             reportGeneration += 1
         }
