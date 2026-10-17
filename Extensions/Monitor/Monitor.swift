@@ -24,7 +24,8 @@ final class Monitor: DeviceActivityMonitor {
             try? await store.appendMilestone(milestone)
             written.signal()
         }
-        _ = written.wait(timeout: .now() + Self.writeTimeout)
+        // A write that hasn't landed would only redraw the old total and hold off the next real reload.
+        guard written.wait(timeout: .now() + Self.writeTimeout) == .success else { return }
         reloadWidget(at: milestone)
     }
 
@@ -37,7 +38,9 @@ final class Monitor: DeviceActivityMonitor {
         // A reload time in the future means the clock went back; don't let it block reloads until it catches up.
         let elapsed = milestone.at.timeIntervalSince(last)
         guard milestone.minutes == 0 || elapsed >= SharedContainer.widgetReloadSpacing - Self.reloadSlack || elapsed < 0 else { return }
-        defaults?.set(milestone.at, forKey: SharedContainer.widgetReloadedAtKey)
+        // A restart redraws 0 but doesn't start the spacing: the widget has no step to schedule a catch-up from,
+        // so the first steps after it must reload on their own.
+        if milestone.minutes > 0 { defaults?.set(milestone.at, forKey: SharedContainer.widgetReloadedAtKey) }
         WidgetCenter.shared.reloadTimelines(ofKind: SharedContainer.doomscrollWidgetKind)
     }
 
