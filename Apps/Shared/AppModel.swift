@@ -51,7 +51,7 @@ final class AppModel {
     private(set) var earliestDay: Date?
     /// Newest data each device has delivered. iPhone data arrives via Apple's sync, often hours late.
     private(set) var dataThrough: [DeviceKind: Date] = [:]
-    /// Sessions logged on the phone by Shortcuts automations, newer than Apple's record.
+    /// Doomscroll time from the Screen Time monitor, newer than Apple's record.
     private(set) var live: [Session] = []
     var question = ""
     var selection: Selection?
@@ -124,10 +124,8 @@ final class AppModel {
     private func liveSessions(after cutoff: Date) async -> [Session] {
         let lookback = cutoff.addingTimeInterval(-86_400)
         let milestones = (try? await store.milestones(after: lookback)) ?? []
-        return MilestoneTimeline.sessions(from: milestones, stepMinutes: Self.milestoneStepMinutes).filter { $0.end > cutoff }
+        return MilestoneTimeline.sessions(from: milestones).filter { $0.end > cutoff }
     }
-
-    static let milestoneStepMinutes = 5
 
     /// Apple's record, plus anything logged live on the phone after where that record stops.
     private func sessions(in window: DateInterval) async -> [Session] {

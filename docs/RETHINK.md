@@ -22,7 +22,7 @@ iPhone
 │                  live card · binges · Ask · history
 ├─ Report ext ──── draws today's real usage: app names, hourly bars, pickups, longest sitting
 │                  (Apple keeps this data inside the extension)
-└─ Monitor ext ─── fires at 5, 10, 15 … 240 min of doomscroll-app use, writes a timestamp
+└─ Monitor ext ─── fires every 5 min of doomscroll-app use up to 4h, then every 15 up to 12h; writes a timestamp
                    to the shared App Group database → app rebuilds a live timeline
 
 Mac

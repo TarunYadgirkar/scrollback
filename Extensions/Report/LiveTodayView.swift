@@ -15,11 +15,10 @@ struct LiveTodayView: View {
         VStack(alignment: .leading, spacing: Space.l) {
             header
             readouts
-            HourStrip(hours: summary.hours)
             apps
         }
         .padding(Space.l)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.card))
     }
 
@@ -89,41 +88,5 @@ private struct LiveReadout: View {
                 if let detail { Text(detail).font(TypeScale.mono).foregroundStyle(Palette.inkMuted) }
             }
         }
-    }
-}
-
-/// 24 columns, social stacked on everything else. One glance answers "when was I on my phone".
-private struct HourStrip: View {
-    static let height: CGFloat = 56
-
-    let hours: [LiveSummary.Hour]
-
-    var body: some View {
-        let peak = max(hours.map { $0.social + $0.other }.max() ?? 0, 60)
-        VStack(alignment: .leading, spacing: Space.xs) {
-            HStack(alignment: .bottom, spacing: 2) {
-                ForEach(0..<24, id: \.self) { index in
-                    let hour = hours.first { Calendar.current.component(.hour, from: $0.start) == index }
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        Rectangle().fill(Palette.idle).frame(height: Self.height * (hour?.other ?? 0) / peak)
-                        Rectangle().fill(Palette.signal).frame(height: Self.height * (hour?.social ?? 0) / peak)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .background(Palette.ink.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 1.5))
-                }
-            }
-            .frame(height: Self.height)
-            HStack {
-                ForEach(["12am", "6am", "12pm", "6pm"], id: \.self) { label in
-                    Text(label).font(TypeScale.monoSmall).foregroundStyle(Palette.inkFaint)
-                    if label != "6pm" { Spacer() }
-                }
-                Spacer()
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Use by hour")
     }
 }

@@ -34,9 +34,18 @@ struct IOSRoot: View {
     @State private var access = ScreenTimeAccess()
     @State private var monitorError: String?
 
+    // The simulator can't grant Screen Time, so let it reach the synced history.
+    private var needsScreenTimeSetup: Bool {
+        #if targetEnvironment(simulator)
+        false
+        #else
+        !access.isApproved || !access.hasPickedApps
+        #endif
+    }
+
     var body: some View {
         Group {
-            if !access.isApproved || !access.hasPickedApps {
+            if needsScreenTimeSetup {
                 ScrollView {
                     ScreenTimeSetupView(access: access).padding(Space.l)
                 }
@@ -45,8 +54,7 @@ struct IOSRoot: View {
                 PairingView()
             } else {
                 DayScreen(model: model)
-                    .environment(\.liveToday, AnyView(LiveTodayCard()))
-                    .environment(\.hourByHour, AnyView(HourByHourCard()))
+                    .environment(\.screenTimeToday, AnyView(ScreenTimeTodayCard()))
             }
         }
         .overlay(alignment: .bottom) {
@@ -59,10 +67,12 @@ struct IOSRoot: View {
                     .padding(Space.l)
             }
         }
-        .task(id: access.selection) {
+        .task { await access.followStatus() }
+        // Re-runs when approval arrives after launch, not only when the picked apps change.
+        .task(id: access.isApproved ? access.selection : nil) {
             guard access.isApproved, access.hasPickedApps else { return }
             do {
-                try await DoomscrollMonitoring.start(access.selection)
+                try await DoomscrollMonitoring.startIfNeeded(access.selection)
             } catch {
                 monitorError = "Couldn't start live tracking: \(error.localizedDescription)"
             }
