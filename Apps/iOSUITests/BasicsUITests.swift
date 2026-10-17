@@ -126,6 +126,18 @@ final class BasicsUITests: XCTestCase {
         snap("picker closed")
     }
 
+    func testChangeDoomscrollAppsInEveryView() {
+        app.terminate()
+        app.launchArguments = ["-viewMode", "timeline", "-device", "iphone"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Change doomscroll apps"].waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on the timeline")
+        snap("timeline doomscroll apps")
+        app.buttons["List"].tap()
+        app.buttons["Previous day"].tap()
+        XCTAssertTrue(app.buttons["Change doomscroll apps"].waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on a past day")
+        snap("past day doomscroll apps")
+    }
+
     func testLeaveAndComeBack() {
         XCUIDevice.shared.press(.home)
         // iOS may go straight to suspended, so accept any state that isn't on screen.
