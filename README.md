@@ -40,7 +40,7 @@ Ask needs Apple Intelligence turned on, on whichever device you use it.
 2. `xcrun cktool save-token --type management`, then `scripts/cloudkit-schema.sh`.
 3. In CloudKit Console, deploy the schema to Production. Every build, USB or TestFlight, uses Production so the Mac and phone see the same database. Production never adds fields on its own, so redo steps 2 and 3 whenever `CloudKit/schema.ckdb` changes, before installing the build that needs it.
 
-iCloud makes the Mac app carry a development provisioning profile, which Apple issues for about a year. Re-run `scripts/install-mac.sh` before it lapses, or the app won't open.
+iCloud makes the Mac app carry a Developer ID provisioning profile; `scripts/install-mac.sh` fetches it during export. If that profile ever expires, re-run the script or the app won't open.
 
 ## Sync security
 

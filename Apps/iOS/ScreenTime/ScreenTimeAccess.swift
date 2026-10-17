@@ -16,8 +16,13 @@ final class ScreenTimeAccess {
         didSet { Self.save(selection) }
     }
 
+    /// Bumped by Done with unchanged apps, so a live-tracking start that failed earlier gets another try.
+    private(set) var monitoringRetries = 0
+
+    func retryMonitoring() { monitoringRetries += 1 }
+
     var isApproved: Bool { status == .approved }
-    var hasPickedApps: Bool { !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty }
+    var hasPickedApps: Bool { selection.hasPicks }
 
     /// Screen Time loads the saved permission a moment after launch, so the first read can say
     /// "not determined" for an app that's approved. Follow Apple's value instead of trusting that read.
