@@ -1,3 +1,4 @@
+import FamilyControls
 import SwiftUI
 import ScrollbackCore
 import WidgetKit
@@ -58,6 +59,7 @@ struct IOSRoot: View {
             } else {
                 DayScreen(model: model)
                     .environment(\.screenTimeToday, AnyView(ScreenTimeTodayCard()))
+                    .environment(\.doomscrollApps, AnyView(DoomscrollAppsControl(access: access)))
             }
         }
         .overlay(alignment: .bottom) {
@@ -71,14 +73,20 @@ struct IOSRoot: View {
             }
         }
         .task { await access.followStatus() }
-        // Re-runs when approval arrives after launch, not only when the picked apps change.
-        .task(id: access.isApproved ? access.selection : nil) {
+        // Re-runs when approval arrives after launch, when the picked apps change, and on a retry from Done.
+        .task(id: MonitoringKey(selection: access.isApproved ? access.selection : nil, retries: access.monitoringRetries)) {
             guard access.isApproved, access.hasPickedApps else { return }
             do {
                 try await DoomscrollMonitoring.startIfNeeded(access.selection)
+                monitorError = nil
             } catch {
                 monitorError = "Couldn't start live tracking: \(error.localizedDescription)"
             }
         }
     }
+}
+
+private struct MonitoringKey: Equatable {
+    let selection: FamilyActivitySelection?
+    let retries: Int
 }
