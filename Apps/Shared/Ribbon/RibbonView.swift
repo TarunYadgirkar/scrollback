@@ -124,8 +124,8 @@ struct RibbonView: View {
             let hops = distinct.prefix(2).map(AppCatalog.name(for:)).joined(separator: " + ") + (distinct.count > 2 ? " +\(distinct.count - 2)" : "")
             var clipped = context
             clipped.clip(to: Path(CGRect(x: labelX, y: labelTop, width: layout.width - labelX, height: RibbonLayout.bracketLabelHeight)))
-            clipped.draw(Text(hops).font(TypeScale.label).foregroundStyle(Palette.ink), at: CGPoint(x: labelX, y: labelTop + 22), anchor: .topLeading)
-            clipped.draw(Text(binge.start.shortClock).font(TypeScale.monoSmall).foregroundStyle(Palette.inkMuted), at: CGPoint(x: labelX, y: labelTop + 36), anchor: .topLeading)
+            clipped.draw(Text(hops).font(TypeScale.label).foregroundStyle(Palette.ink), at: CGPoint(x: labelX, y: labelTop + RibbonLayout.bracketAppsOffset), anchor: .topLeading)
+            clipped.draw(Text(binge.start.shortClock).font(TypeScale.monoSmall).foregroundStyle(Palette.inkMuted), at: CGPoint(x: labelX, y: labelTop + RibbonLayout.bracketClockOffset), anchor: .topLeading)
             labelFloor = labelTop + RibbonLayout.bracketLabelHeight + Space.s
         }
     }

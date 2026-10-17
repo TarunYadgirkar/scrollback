@@ -16,6 +16,7 @@ extension DeviceKind {
 /// The first choice on screen: whose day you're looking at. Everything below follows it.
 struct DeviceSwitcher: View {
     @Bindable var model: AppModel
+    @Environment(\.screenTimeToday) private var screenTimeToday
 
     var body: some View {
         HStack(spacing: Space.xs) {
@@ -25,6 +26,13 @@ struct DeviceSwitcher: View {
         }
         .padding(Space.xs)
         .background(Palette.ink.opacity(0.06), in: RoundedRectangle(cornerRadius: Radius.card + Space.xs))
+    }
+
+    /// The phone's real total lives inside Screen Time's card, which the app can't read,
+    /// so don't show a partial number beside it.
+    private func subtitle(for device: DeviceKind) -> String {
+        if device == .iphone, model.isToday, screenTimeToday != nil { return "Live today" }
+        return Format.duration(model.report.total(on: device)) + (model.isToday ? " today" : "")
     }
 
     private func tab(_ device: DeviceKind) -> some View {
@@ -38,7 +46,7 @@ struct DeviceSwitcher: View {
                     .frame(width: 22)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(device.label).font(TypeScale.bodyStrong)
-                    Text(Format.duration(model.report.total(on: device)) + (model.isToday ? " today" : ""))
+                    Text(subtitle(for: device))
                         .font(TypeScale.mono)
                         .foregroundStyle(isSelected ? Palette.inkMuted : Palette.inkFaint)
                 }
@@ -58,7 +66,7 @@ struct DeviceSwitcher: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressScale())
-        .accessibilityLabel("\(device.label), \(Format.duration(model.report.total(on: device)))")
+        .accessibilityLabel("\(device.label), \(subtitle(for: device))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

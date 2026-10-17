@@ -13,18 +13,20 @@ struct DayHeader: View {
             }
             Button { isPickingDay = true } label: {
                 HStack(spacing: Space.xs) {
-                    Text(title).font(TypeScale.title).foregroundStyle(Palette.ink)
+                    Text(title).font(TypeScale.title).foregroundStyle(Palette.ink).lineLimit(1)
                     Image(systemName: "calendar").font(TypeScale.label).foregroundStyle(Palette.inkMuted)
                 }
                 .contentShape(Rectangle())
+                .fixedSize()
             }
             .buttonStyle(PressScale())
             .accessibilityLabel("\(title). Pick a day")
             .popover(isPresented: $isPickingDay) { dayPicker }
             if !model.isToday {
                 Button { Task { await model.show(day: .now) } } label: {
-                    Text("Back to today")
+                    Text("Today")
                         .font(TypeScale.label)
+                        .lineLimit(1)
                         .foregroundStyle(Palette.ink)
                         .padding(.horizontal, Space.s)
                         .padding(.vertical, Space.xxs + 1)
@@ -32,7 +34,9 @@ struct DayHeader: View {
                         .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
                 }
                 .buttonStyle(PressScale())
+                .fixedSize()
                 .keyboardShortcut("t")
+                .accessibilityLabel("Back to today")
             }
             Spacer(minLength: Space.s)
             SyncPill(status: model.status) { Task { await model.refresh() } }
@@ -85,23 +89,34 @@ struct SyncPill: View {
 
     var body: some View {
         Button(action: onRefresh) {
-            HStack(spacing: Space.xs + Space.xxs) {
-                if status == .syncing {
-                    ProgressView().controlSize(.mini)
-                } else {
-                    Circle().fill(dotColor).frame(width: 7, height: 7)
-                }
-                Text(text).font(TypeScale.label).foregroundStyle(Palette.inkMuted).lineLimit(1)
+            // Narrow phones drop the words before they'd truncate; the dot keeps the state.
+            ViewThatFits(in: .horizontal) {
+                pill(showsText: true)
+                pill(showsText: false)
             }
-            .padding(.horizontal, Space.s + Space.xxs)
-            .padding(.vertical, Space.xs)
-            .background(Palette.raised, in: Capsule())
-            .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
         }
         .buttonStyle(PressScale())
         .help(helpText)
         .keyboardShortcut("r")
         .accessibilityLabel("\(text). Sync now")
+    }
+
+    private func pill(showsText: Bool) -> some View {
+        HStack(spacing: Space.xs + Space.xxs) {
+            if status == .syncing {
+                ProgressView().controlSize(.mini)
+            } else {
+                Circle().fill(dotColor).frame(width: 7, height: 7)
+            }
+            if showsText {
+                Text(text).font(TypeScale.label).foregroundStyle(Palette.inkMuted).lineLimit(1).fixedSize()
+            }
+        }
+        .padding(.horizontal, Space.s + Space.xxs)
+        .padding(.vertical, Space.xs)
+        .frame(minHeight: 28)
+        .background(Palette.raised, in: Capsule())
+        .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
     }
 
     private var dotColor: Color {
@@ -119,9 +134,16 @@ struct SyncPill: View {
         case .synced(let date, _): "Synced \(date.shortClock)"
         case .needsSetup(.fullDiskAccess): "Needs Full Disk Access"
         case .needsSetup(.notPaired): "Not paired with your Mac"
-        case .failed: "Sync failed"
+        case .failed: Self.failedText
         }
     }
+
+    #if os(iOS)
+    // On the phone, a failed sync almost always means the Mac isn't on the same Wi-Fi.
+    static let failedText = "Mac not nearby"
+    #else
+    static let failedText = "Sync failed"
+    #endif
 
     private var helpText: String {
         switch status {

@@ -75,7 +75,7 @@ struct SessionReadout: View {
 
     private var name: some View {
         HStack(spacing: Space.s) {
-            Circle().fill(Palette.category(AppCatalog.category(for: session.bundleID))).frame(width: 8, height: 8)
+            AppIconView(bundleID: session.bundleID, size: 18)
             Text(AppCatalog.name(for: session.bundleID)).font(TypeScale.bodyStrong).foregroundStyle(Palette.ink)
         }
     }

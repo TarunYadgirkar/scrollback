@@ -31,12 +31,51 @@ struct ScrollbackiOSApp: App {
 
 struct IOSRoot: View {
     @Bindable var model: AppModel
+    @State private var access = ScreenTimeAccess()
+    @State private var monitorError: String?
+
+    // The simulator can't grant Screen Time, so let it reach the synced history.
+    private var needsScreenTimeSetup: Bool {
+        #if targetEnvironment(simulator)
+        false
+        #else
+        !access.isApproved || !access.hasPickedApps
+        #endif
+    }
 
     var body: some View {
-        if model.status == .needsSetup(.notPaired), !model.hasData {
-            PairingView()
-        } else {
-            DayScreen(model: model)
+        Group {
+            if needsScreenTimeSetup {
+                ScrollView {
+                    ScreenTimeSetupView(access: access).padding(Space.l)
+                }
+                .background(Palette.surface)
+            } else if model.status == .needsSetup(.notPaired), !model.hasData {
+                PairingView()
+            } else {
+                DayScreen(model: model)
+                    .environment(\.screenTimeToday, AnyView(ScreenTimeTodayCard()))
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let monitorError {
+                Text(monitorError)
+                    .font(TypeScale.label)
+                    .foregroundStyle(Palette.critical)
+                    .padding(Space.m)
+                    .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.control))
+                    .padding(Space.l)
+            }
+        }
+        .task { await access.followStatus() }
+        // Re-runs when approval arrives after launch, not only when the picked apps change.
+        .task(id: access.isApproved ? access.selection : nil) {
+            guard access.isApproved, access.hasPickedApps else { return }
+            do {
+                try await DoomscrollMonitoring.startIfNeeded(access.selection)
+            } catch {
+                monitorError = "Couldn't start live tracking: \(error.localizedDescription)"
+            }
         }
     }
 }
