@@ -40,7 +40,7 @@ Mac
 ## Still a workaround, and staying
 
 - **Reading Biome on the Mac.** DeviceActivity doesn't exist on macOS, so this stays the only source of Mac usage and of second-level iPhone history.
-- **LAN sync from Mac to phone.** CloudKit would let the phone get history away from home. It's worth doing next, but the LAN path works today.
+- **LAN sync from Mac to phone.** CloudKit now carries the same history through the private iCloud database, so the phone gets it away from home too.
 
 ## The in-app data API, and its catch
 
