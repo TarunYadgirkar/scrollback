@@ -57,15 +57,19 @@ struct DoomscrollProvider: AppIntentTimelineProvider {
         context.isPreview ? .sample : await DoomscrollEntry.load(now: .now)
     }
 
-    /// The monitor asks for a reload as steps land (at most every 15 minutes), so there's no polling. The second entry
-    /// zeroes the count at midnight even if nothing wakes the widget then.
+    /// The monitor asks for a reload as steps land, at most every 15 minutes. While scrolling is recent, this also
+    /// checks back once that window passes, to pick up steps the monitor skipped; otherwise it waits.
+    /// The second entry zeroes the count at midnight even if nothing wakes the widget then.
     func timeline(for configuration: DoomscrollWidgetIntent, in context: Context) async -> Timeline<DoomscrollEntry> {
         let now = Date.now
+        SharedContainer.defaults?.set(now, forKey: SharedContainer.widgetReloadedAtKey)
         let entry = await DoomscrollEntry.load(now: now)
         let calendar = Calendar.current
         let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(86_400)
         let reset = DoomscrollEntry(date: midnight, today: DoomscrollToday(minutes: 0, asOf: nil), isTracking: entry.isTracking)
-        return Timeline(entries: [entry, reset], policy: .atEnd)
+        let catchUp = entry.today.asOf.map { $0.addingTimeInterval(SharedContainer.widgetReloadSpacing) }
+        let policy: TimelineReloadPolicy = if let catchUp, catchUp > now, catchUp < midnight { .after(catchUp) } else { .atEnd }
+        return Timeline(entries: [entry, reset], policy: policy)
     }
 }
 

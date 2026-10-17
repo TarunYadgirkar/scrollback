@@ -55,7 +55,9 @@ public struct DoomscrollToday: Sendable, Equatable {
         var asOf: Date?
         for milestone in milestones.sorted(by: { $0.at < $1.at }) where milestone.at >= dayStart && milestone.at <= now {
             if milestone.minutes == 0 {
-                runStart = milestone.at
+                // A 0 with nothing counted yet (a late midnight marker, or the app's restart followed by
+                // the monitor's own) keeps the earlier start, so steps right after it aren't mistaken for leftovers.
+                if runHigh > 0 { runStart = milestone.at }
                 runHigh = 0
                 continue
             }
