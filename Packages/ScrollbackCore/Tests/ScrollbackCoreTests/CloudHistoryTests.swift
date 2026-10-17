@@ -57,7 +57,7 @@ private func tempStore() throws -> (SessionStore, URL) {
     }
 
     @Test func unknownOpenReasonIsDroppedNotFatal() throws {
-        let json = Data(#"[{"id":"x","device":"iphone","bundleID":"com.burbn.instagram","start":0,"end":60,"reason":"someFutureReason"}]"#.utf8)
+        let json = Data(#"[{"id":"x","device":"iphone","bundleID":"com.burbn.instagram","start":0,"end":60,"reason":"someFutureReason"},{"id":"y","device":"vision","bundleID":"a","start":0,"end":60}]"#.utf8)
         let packed = try (json as NSData).compressed(using: .lzfse) as Data
         let unpacked = try CloudHistory.unpack(packed, version: CloudHistory.version)
         #expect(unpacked.count == 1)

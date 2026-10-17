@@ -63,14 +63,17 @@ public enum CloudHistory {
               let decoded = try? JSONDecoder().decode([Packed].self, from: json)
         else { throw Failure.unreadable }
         // Rebuilt through init so ids always derive from fields, never from the record.
-        return decoded.map {
-            Session(device: $0.device, bundleID: $0.bundleID, start: $0.start, end: $0.end, reason: $0.reason.flatMap(OpenReason.init(rawValue:)))
+        return decoded.compactMap { packed in
+            DeviceKind(rawValue: packed.device).map {
+                Session(device: $0, bundleID: packed.bundleID, start: packed.start, end: packed.end, reason: packed.reason.flatMap(OpenReason.init(rawValue:)))
+            }
         }
     }
 
-    /// Session as read back: an open reason this build doesn't know yet is dropped, not fatal.
+    /// Session as read back. A device or open reason this build doesn't know yet drops
+    /// that session or reason instead of the whole day.
     private struct Packed: Decodable {
-        let device: DeviceKind
+        let device: String
         let bundleID: String
         let start: Date
         let end: Date
