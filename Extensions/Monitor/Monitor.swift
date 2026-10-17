@@ -1,9 +1,10 @@
 import DeviceActivity
 import Foundation
 import ScrollbackCore
+import UserNotifications
 
 /// Wakes each time doomscroll-app use crosses another 5-minute step and notes when it happened.
-/// The app turns those timestamps back into a live timeline.
+/// The app turns those timestamps back into a live timeline, and a long unbroken run gets a nudge.
 final class Monitor: DeviceActivityMonitor {
     override func intervalDidStart(for activity: DeviceActivityName) {
         record(minutes: 0)
@@ -14,17 +15,43 @@ final class Monitor: DeviceActivityMonitor {
         record(minutes: minutes)
     }
 
-    /// iOS can suspend the extension as soon as a callback returns, so wait for the write.
+    /// iOS can suspend the extension as soon as a callback returns, so wait for the write and the nudge.
     private func record(minutes: Int) {
         guard let store = try? SessionStore(url: SessionStore.defaultURL()) else { return }
         let milestone = Milestone(at: .now, minutes: minutes)
-        let written = DispatchSemaphore(value: 0)
+        let done = DispatchSemaphore(value: 0)
         Task {
             try? await store.appendMilestone(milestone)
-            written.signal()
+            if minutes > 0 { await Self.nudgeIfDue(store: store, now: milestone.at) }
+            done.signal()
         }
-        _ = written.wait(timeout: .now() + Self.writeTimeout)
+        _ = done.wait(timeout: .now() + Self.callbackTimeout)
     }
 
-    static let writeTimeout: DispatchTimeInterval = .seconds(3)
+    private static func nudgeIfDue(store: SessionStore, now: Date) async {
+        guard LockProbe.isUnlocked else { return }
+        let defaults = SharedContainer.defaults
+        let lastNudged = defaults?.object(forKey: lastNudgedKey) as? Date
+        let today = Calendar.current.startOfDay(for: now).addingTimeInterval(-1)
+        guard let milestones = try? await store.milestones(after: today),
+              let run = DoomscrollNudge.due(milestones: milestones, now: now, lastNudged: lastNudged)
+        else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "\(run.minutes) minutes of scrolling"
+        content.body = "Nonstop since \(run.start.formatted(date: .omitted, time: .shortened))."
+        content.sound = .default
+        content.threadIdentifier = "doomscroll"
+        // One identifier per run, so a duplicate callback replaces the nudge instead of stacking a second.
+        let id = "doomscroll.\(Int(run.start.timeIntervalSince1970))"
+        do {
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
+            defaults?.set(run.start, forKey: lastNudgedKey)
+        } catch {
+            // Notifications are off; try again on the next step in case they get turned on.
+        }
+    }
+
+    static let lastNudgedKey = "doomscrollNudge.lastRunStart"
+    static let callbackTimeout: DispatchTimeInterval = .seconds(5)
 }

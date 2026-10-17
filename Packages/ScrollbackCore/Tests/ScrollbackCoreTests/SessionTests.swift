@@ -263,3 +263,77 @@ import Testing
         #expect(total == TimeInterval(30 * 60))
     }
 }
+
+@Suite struct DoomscrollNudgeTests {
+    /// Steps every 5 minutes from `start`, beginning at `fromMinutes`.
+    private func steady(from start: Date, fromMinutes: Int = 0, steps: Int) -> [Milestone] {
+        (0...steps).map { Milestone(at: start.addingTimeInterval(TimeInterval($0 * 300)), minutes: fromMinutes + $0 * 5) }
+    }
+
+    @Test func nudgesOnceTwentyNonstopMinutesAccrue() {
+        let milestones = steady(from: .at(19, 0), steps: 4)
+        let fifteen = Array(milestones.dropLast())
+
+        #expect(DoomscrollNudge.due(milestones: fifteen, now: .at(19, 15), lastNudged: nil) == nil)
+        let run = DoomscrollNudge.due(milestones: milestones, now: .at(19, 20), lastNudged: nil)
+        #expect(run == DoomscrollNudge.Run(start: .at(19, 0), end: .at(19, 20), minutes: 20))
+    }
+
+    @Test func eachRunNudgesOnlyOnce() {
+        let milestones = steady(from: .at(19, 0), steps: 6)
+        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 30), lastNudged: .at(19, 0)) == nil)
+    }
+
+    @Test func aBreakStartsANewRun() {
+        // 20 minutes, a 10-minute break, then 5 more: the newest run is only the step after the break.
+        var milestones = steady(from: .at(19, 0), steps: 4)
+        milestones.append(Milestone(at: .at(19, 35), minutes: 25))
+        #expect(DoomscrollNudge.currentRun(in: milestones) == DoomscrollNudge.Run(start: .at(19, 30), end: .at(19, 35), minutes: 5))
+        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 35), lastNudged: .at(19, 0)) == nil)
+    }
+
+    @Test func firstStepAfterABreakCountsInFull() {
+        // Use from 18:00 left the count at 10; picking back up around 19:00 reaches 15 at 19:05.
+        let milestones = [Milestone(at: .at(18, 0), minutes: 10)] + steady(from: .at(19, 5), fromMinutes: 15, steps: 3)
+        let run = DoomscrollNudge.due(milestones: milestones, now: .at(19, 20), lastNudged: nil)
+        #expect(run == DoomscrollNudge.Run(start: .at(19, 0), end: .at(19, 20), minutes: 20))
+    }
+
+    @Test func stepsFasterThanRealTimeBreakTheRun() {
+        // A phantom or premature callback: 5 more minutes after only 1 minute of wall time.
+        var milestones = steady(from: .at(19, 0), steps: 3)
+        milestones.append(Milestone(at: .at(19, 16), minutes: 20))
+        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 16), lastNudged: nil) == nil)
+    }
+
+    @Test func duplicateCallbacksDontBreakTheRun() {
+        var milestones = steady(from: .at(19, 0), steps: 4)
+        milestones.append(Milestone(at: .at(19, 12), minutes: 10))
+        milestones.append(Milestone(at: .at(19, 16), minutes: 15))
+        let run = DoomscrollNudge.due(milestones: milestones, now: .at(19, 20), lastNudged: nil)
+        #expect(run?.start == .at(19, 0))
+        #expect(run?.minutes == 20)
+    }
+
+    @Test func aLateDuplicateDoesntNudgeAboutAnOldRun() {
+        let milestones = steady(from: .at(19, 0), steps: 4) + [Milestone(at: .at(21, 0), minutes: 20)]
+        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(21, 0), lastNudged: nil) == nil)
+    }
+
+    @Test func restartsBreakTheRun() {
+        var milestones = steady(from: .at(19, 0), steps: 3)
+        milestones.append(Milestone(at: .at(19, 16), minutes: 0))
+        milestones.append(Milestone(at: .at(19, 21), minutes: 5))
+        #expect(DoomscrollNudge.currentRun(in: milestones)?.minutes == 5)
+    }
+
+    @Test func coarseLateStepsStillNudge() {
+        let milestones = [
+            Milestone(at: .at(20, 0), minutes: 240),
+            Milestone(at: .at(20, 15), minutes: 255),
+            Milestone(at: .at(20, 30), minutes: 270),
+        ]
+        let run = DoomscrollNudge.due(milestones: milestones, now: .at(20, 30), lastNudged: nil)
+        #expect(run == DoomscrollNudge.Run(start: .at(20, 0), end: .at(20, 30), minutes: 30))
+    }
+}
