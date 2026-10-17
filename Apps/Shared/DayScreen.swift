@@ -59,8 +59,11 @@ struct DayScreen: View {
             DayHeader(model: model)
             if !isCompactTimeline {
                 AskBar(model: model)
+                #if os(iOS)
+                // The Mac keeps these in the inspector, so the timeline under this fixed header keeps its room.
                 RecapStrip(report: model.report, device: model.device)
                 if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
+                #endif
             }
             ActivityHeader(model: model)
             if model.device == .iphone, let doomscrollApps { doomscrollApps }
@@ -105,16 +108,22 @@ private struct TimelinePane: View {
             }
             .scrollPosition($scrollPosition)
             .refreshable { await model.refresh() }
-            .onChange(of: model.focusWindow) { _, window in scroll(to: window?.start) }
-            .task(id: ScrollKey(day: model.report.window.start, count: model.report.sessions.count)) {
+            .onChange(of: model.focusRequest) { _, _ in scroll(to: model.focusWindow?.start) }
+            // Place the day once, when it first has something to show. Later refreshes add sessions
+            // while you're reading, and re-placing then would yank the ribbon back every few minutes.
+            .task(id: ScrollKey(day: model.report.window.start, isEmpty: model.report.sessions.isEmpty)) {
+                guard placedDay != model.report.window.start, model.isToday || !model.report.sessions.isEmpty else { return }
+                placedDay = model.report.window.start
                 scroll(to: model.focusWindow?.start ?? defaultScrollTarget, animated: false)
             }
         }
     }
 
+    @State private var placedDay: Date?
+
     private struct ScrollKey: Hashable {
         let day: Date
-        let count: Int
+        let isEmpty: Bool
     }
 
     /// Open on the most recent activity rather than midnight.
