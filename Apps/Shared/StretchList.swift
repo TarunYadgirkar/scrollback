@@ -32,7 +32,7 @@ struct StretchList<Header: View>: View {
                 .padding(.vertical, Space.m)
             }
             .refreshable { await model.refresh() }
-            .onChange(of: model.focusRequest) { _, _ in
+            .onChange(of: model.focusRequest, initial: true) { _, _ in
                 guard let target = stretches.last(where: isFocused) else { return }
                 expanded.insert(target.id)
                 withAnimation(.easeOut(duration: 0.3)) { reader.scrollTo(target.id, anchor: .top) }

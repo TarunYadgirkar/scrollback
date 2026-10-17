@@ -76,8 +76,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Opening the app again from Finder or Spotlight while it runs in the menu bar brings the window back.
+    /// The status item counts as a visible window, so ask regardless; an open window just comes forward.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
-        if !hasVisibleWindows { windowRequest.wantsMain = true }
+        windowRequest.wantsMain = true
         return true
     }
 

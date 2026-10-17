@@ -80,8 +80,11 @@ struct FullDiskAccessView: View {
     private func relaunch() {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.createsNewApplicationInstance = true
-        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, _ in
-            Task { @MainActor in NSApp.terminate(nil) }
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { app, error in
+            // Only step aside once the new copy is actually running.
+            Task { @MainActor in
+                if app != nil, error == nil { NSApp.terminate(nil) } else { NSSound.beep() }
+            }
         }
     }
 }
