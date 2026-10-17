@@ -63,6 +63,7 @@ struct DayScreen: View {
                 if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
             }
             ActivityHeader(model: model)
+            if model.device == .iphone, let doomscrollApps { doomscrollApps }
             if model.device == .iphone, model.isToday, model.isTrackingLive {
                 Text("Doomscroll apps show up live in 5-minute steps. Everything else fills in from your Mac.")
                     .font(TypeScale.label)
