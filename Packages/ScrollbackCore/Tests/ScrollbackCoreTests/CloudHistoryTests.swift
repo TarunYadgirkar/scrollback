@@ -206,6 +206,27 @@ private func tempStore() throws -> (SessionStore, URL) {
         #expect(try await store.cloudState("changeToken") == nil)
     }
 
+    @Test func resetKeepsTheAccountSoAPauseSurvives() async throws {
+        let (store, url) = try tempStore()
+        defer { try? FileManager.default.removeItem(at: url) }
+        try await store.setCloudState("account", Data("u1".utf8))
+        try await store.setCloudState("zoneReady", Data([1]))
+        try await store.resetCloudUploads()
+        #expect(try await store.cloudState("account") == Data("u1".utf8))
+        #expect(try await store.cloudState("zoneReady") == nil)
+    }
+
+    @Test func insertMissingNeverShortensARow() async throws {
+        let (store, url) = try tempStore()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let long = session("com.apple.Safari", at(10), at(11), device: .mac)
+        try await store.upsert([long])
+        let short = session("com.apple.Safari", at(10), at(10.5), device: .mac)
+        let other = session("com.burbn.instagram", at(12), at(12.5))
+        #expect(try await store.insertMissing([short, other]) == 1)
+        #expect(try await store.sessions(startingIn: day).map(\.end) == [at(11), at(12.5)])
+    }
+
     @Test func olderStoresQueueTheirWholeHistory() async throws {
         let url = FileManager.default.temporaryDirectory.appending(path: "scrollback-cloud-\(UUID()).sqlite")
         defer { try? FileManager.default.removeItem(at: url) }
