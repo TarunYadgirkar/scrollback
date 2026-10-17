@@ -43,3 +43,45 @@ public enum MilestoneTimeline {
         return sessions
     }
 }
+
+/// Today's doomscroll total as the monitor last saw it, for the widgets.
+public struct DoomscrollToday: Sendable, Equatable {
+    public let minutes: Int
+    /// When the latest step today was reached, or nil before the first one.
+    public let asOf: Date?
+
+    public init(minutes: Int, asOf: Date?) {
+        self.minutes = minutes
+        self.asOf = asOf
+    }
+
+    /// Adds up the steps reached on `now`'s day. Screen Time's counters start over at midnight and at each
+    /// restart (a 0 milestone), so each run counts up from 0 and a mid-day restart keeps what came before it.
+    /// Counting from the run's highest step, not the previous row, keeps a late or repeated callback from
+    /// adding anything twice. Uses the steps themselves, not session lengths, which can run longer than their minutes.
+    public static func from(_ milestones: [Milestone], now: Date = .now, calendar: Calendar = .current) -> DoomscrollToday {
+        let dayStart = calendar.startOfDay(for: now)
+        var runStart = dayStart
+        var runHigh = 0
+        var minutes = 0
+        var asOf: Date?
+        for milestone in milestones.sorted(by: { $0.at < $1.at }) where milestone.at >= dayStart && milestone.at <= now {
+            if milestone.minutes == 0 {
+                // A 0 just after the run began with nothing counted (a late midnight marker, or the app's restart
+                // followed by the monitor's own) keeps the earlier start, so steps right after it aren't taken for leftovers.
+                if runHigh > 0 || milestone.at.timeIntervalSince(runStart) > Self.markerGrace { runStart = milestone.at }
+                runHigh = 0
+                continue
+            }
+            // More minutes than the run has lasted is a callback left over from before it (yesterday's, say).
+            guard milestone.minutes > runHigh, TimeInterval(milestone.minutes) * 60 <= milestone.at.timeIntervalSince(runStart) else { continue }
+            minutes += milestone.minutes - runHigh
+            runHigh = milestone.minutes
+            asOf = milestone.at
+        }
+        return DoomscrollToday(minutes: minutes, asOf: asOf)
+    }
+
+    /// How late a 0 marker can land after the moment it stands for.
+    static let markerGrace: TimeInterval = 5 * 60
+}
