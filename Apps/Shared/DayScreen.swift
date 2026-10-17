@@ -4,6 +4,7 @@ import ScrollbackCore
 struct DayScreen: View {
     @Bindable var model: AppModel
     @Environment(\.screenTimeToday) private var screenTimeToday
+    @Environment(\.doomscrollApps) private var doomscrollApps
 
     var body: some View {
         #if os(macOS)
@@ -46,6 +47,7 @@ struct DayScreen: View {
             DayHeader(model: model)
             AskBar(model: model)
             ActivityHeader(model: model)
+            if let doomscrollApps { doomscrollApps }
             report
         }
         .padding(.horizontal, Space.l)
@@ -66,6 +68,7 @@ struct DayScreen: View {
                 #endif
             }
             ActivityHeader(model: model)
+            if model.device == .iphone, let doomscrollApps { doomscrollApps }
             if model.device == .iphone, model.isToday, model.isTrackingLive {
                 Text("Doomscroll apps show up live in 5-minute steps. Everything else fills in from your Mac.")
                     .font(TypeScale.label)
@@ -154,4 +157,6 @@ private struct TimelinePane: View {
 extension EnvironmentValues {
     /// The phone's live Screen Time report for today, when access is granted. Nil on the Mac.
     @Entry var screenTimeToday: AnyView?
+    /// The phone's picked doomscroll apps and the control to change them. Nil on the Mac.
+    @Entry var doomscrollApps: AnyView?
 }

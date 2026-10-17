@@ -114,6 +114,33 @@ final class BasicsUITests: XCTestCase {
         XCTAssertTrue(chip.waitForExistence(timeout: Self.timeout))
     }
 
+    func testChangeDoomscrollAppsCancels() {
+        let change = app.buttons["Change doomscroll apps"]
+        XCTAssertTrue(change.waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on the main screen")
+        let before = change.value as? String
+        change.tap()
+        let cancel = app.navigationBars.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: Self.timeout), "Doomscroll app picker never opened")
+        snap("doomscroll picker")
+        cancel.tap()
+        let back = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: change)
+        wait(for: [back], timeout: Self.timeout)
+        XCTAssertEqual(change.value as? String, before, "Closing the picker without picking changed the apps")
+        snap("picker closed")
+    }
+
+    func testChangeDoomscrollAppsInEveryView() {
+        app.terminate()
+        app.launchArguments = ["-viewMode", "timeline", "-device", "iphone"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Change doomscroll apps"].waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on the timeline")
+        snap("timeline doomscroll apps")
+        app.buttons["List"].tap()
+        app.buttons["Previous day"].tap()
+        XCTAssertTrue(app.buttons["Change doomscroll apps"].waitForExistence(timeout: Self.timeout), "No way to change doomscroll apps on a past day")
+        snap("past day doomscroll apps")
+    }
+
     func testLeaveAndComeBack() {
         XCUIDevice.shared.press(.home)
         // iOS may go straight to suspended, so accept any state that isn't on screen.
