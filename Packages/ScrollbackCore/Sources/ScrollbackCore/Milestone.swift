@@ -19,20 +19,27 @@ public enum MilestoneTimeline {
 
     /// Each milestone means the minutes since the previous one ended at that moment. We only know
     /// they happened somewhere in the gap, so place them at its end (when the step was reached).
-    /// When steps come back to back, pull the start in so the gap to the previous step stays within
-    /// `BingeDetector.maxGap` and the sitting still chains; that stretches a session past its measured
-    /// minutes only when the gap would otherwise exceed it.
+    /// When a step follows right after another session, pull the start in so the gap to that
+    /// session stays within `BingeDetector.maxGap` and the sitting still chains; that stretches a
+    /// session past its measured minutes only when the gap would otherwise exceed it.
     public static func sessions(from milestones: [Milestone]) -> [Session] {
         let sorted = milestones.sorted { $0.at < $1.at }
-        return zip(sorted, sorted.dropFirst()).compactMap { previous, current in
-            guard current.minutes > previous.minutes else { return nil }
+        var sessions: [Session] = []
+        var previousEndedSession = false
+        for (previous, current) in zip(sorted, sorted.dropFirst()) {
+            guard current.minutes > previous.minutes else {
+                previousEndedSession = false
+                continue
+            }
             let accrued = TimeInterval(current.minutes - previous.minutes) * 60
             let wall = current.at.timeIntervalSince(previous.at)
             var start = current.at.addingTimeInterval(-accrued)
-            if wall <= accrued * continuityFactor {
+            if previousEndedSession, wall <= accrued * continuityFactor {
                 start = min(start, previous.at.addingTimeInterval(BingeDetector.maxGap))
             }
-            return Session(device: .iphone, bundleID: bundleID, start: max(start, previous.at), end: current.at, reason: nil)
+            sessions.append(Session(device: .iphone, bundleID: bundleID, start: max(start, previous.at), end: current.at, reason: nil))
+            previousEndedSession = true
         }
+        return sessions
     }
 }
