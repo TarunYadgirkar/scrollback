@@ -5,8 +5,9 @@ import Foundation
 public enum DoomscrollNudge {
     /// Minutes of unbroken doomscroll-app use before the nudge.
     public static let thresholdMinutes = 20
-    /// How far back the monitor should read milestones: past the longest run the ladder can see.
-    public static let lookback: TimeInterval = 13 * 3600
+    /// How far back the monitor should read milestones: past the longest run the ladder can see,
+    /// and far enough that the day's restart is there to anchor the first run of the day.
+    public static let lookback: TimeInterval = 24 * 3600
     /// A step that arrives much faster than its minutes can't be real use (a phantom or premature callback),
     /// so it's skipped. The slack absorbs a late callback, which makes the step after it look early.
     static let minimumPace = 0.8
@@ -19,30 +20,30 @@ public enum DoomscrollNudge {
 
     /// An unbroken run of use ending at the latest milestone.
     public struct Run: Sendable, Equatable {
-        /// When the run began; stable while the run keeps going, so it identifies the run.
         public let start: Date
         public let end: Date
         public let minutes: Int
     }
 
     /// The run to nudge about right now, or nil when there's nothing new to say.
-    /// `lastNudged` is the start of the run that was already nudged, so each run nudges once.
+    /// `lastNudged` is when the last nudge went out; a run that was already going then has been nudged.
+    /// (Not the run's start: that can shift a step later once the step before it leaves the lookback.)
     /// `lastLocked` is the latest step that fired while the phone was locked; nothing before it counts.
     public static func due(milestones: [Milestone], now: Date, lastNudged: Date?, lastLocked: Date? = nil) -> Run? {
         guard let run = currentRun(in: milestones, lastLocked: lastLocked),
               run.minutes >= thresholdMinutes,
-              now.timeIntervalSince(run.end) <= freshness,
-              run.start != lastNudged
+              now.timeIntervalSince(run.end) <= freshness
         else { return nil }
+        if let lastNudged, run.start <= lastNudged, lastNudged <= run.end { return nil }
         return run
     }
 
     /// Walks back from the latest milestone while steps come back to back, the way `MilestoneTimeline`
     /// joins them into one sitting. The first step of the run counts in full, as the timeline draws it.
     static func currentRun(in milestones: [Milestone], lastLocked: Date? = nil) -> Run? {
-        let steps = cleaned(milestones)
-        let kept = trusted(steps)
-        guard let last = kept.last, last.at == steps.last?.at, !last.isRestart else { return nil }
+        let kept = steps(from: milestones)
+        // The newest callback must be one we believe, or there's nothing new to say.
+        guard let last = kept.last, last.at == milestones.map(\.at).max(), !last.isRestart else { return nil }
 
         var start = last.at
         var minutes = 0
@@ -70,40 +71,47 @@ public enum DoomscrollNudge {
     }
 
     /// A milestone with minutes counted across restarts, so they only go up.
+    /// A restart is also used to anchor a run after Screen Time's count jumped.
     struct Step: Equatable {
         let at: Date
         let minutes: Int
         let isRestart: Bool
     }
 
-    /// Oldest first, minutes made cumulative across restarts (0), and duplicate callbacks dropped.
-    static func cleaned(_ milestones: [Milestone]) -> [Step] {
-        var steps: [Step] = []
+    /// Oldest first, with minutes made cumulative across restarts (0) and only the believable steps kept:
+    /// duplicate callbacks and steps that came faster than real time are dropped. If a phantom burst
+    /// really moved the count, the steps after it are paced from the burst, so the burst becomes an anchor.
+    static func steps(from milestones: [Milestone]) -> [Step] {
+        var kept: [Step] = []
         var offset = 0
-        var highest = 0
+        var skipped: Step?
         for milestone in milestones.sorted(by: { $0.at < $1.at }) {
             if milestone.minutes == 0 {
-                offset = highest
-                steps.append(Step(at: milestone.at, minutes: offset, isRestart: true))
-            } else if offset + milestone.minutes > highest {
-                highest = offset + milestone.minutes
-                steps.append(Step(at: milestone.at, minutes: highest, isRestart: false))
+                offset = kept.last?.minutes ?? 0
+                kept.append(Step(at: milestone.at, minutes: offset, isRestart: true))
+                skipped = nil
+                continue
             }
-        }
-        return steps
-    }
-
-    /// Drops steps that came too fast after the last believable one.
-    static func trusted(_ steps: [Step]) -> [Step] {
-        var kept: [Step] = []
-        for step in steps {
-            if let previous = kept.last, !step.isRestart {
-                let wall = step.at.timeIntervalSince(previous.at)
-                let budget = TimeInterval(step.minutes - previous.minutes) * 60
-                guard wall >= budget * minimumPace - paceSlack else { continue }
+            let step = Step(at: milestone.at, minutes: offset + milestone.minutes, isRestart: false)
+            guard let previous = kept.last else { kept.append(step); continue }
+            guard step.minutes > previous.minutes else { continue }
+            if believable(step, after: previous) {
+                kept.append(step)
+                skipped = nil
+            } else if let anchor = skipped, step.minutes > anchor.minutes, believable(step, after: anchor) {
+                kept.append(Step(at: anchor.at, minutes: anchor.minutes, isRestart: true))
+                kept.append(step)
+                skipped = nil
+            } else {
+                skipped = step
             }
-            kept.append(step)
         }
         return kept
+    }
+
+    private static func believable(_ step: Step, after previous: Step) -> Bool {
+        let wall = step.at.timeIntervalSince(previous.at)
+        let budget = TimeInterval(step.minutes - previous.minutes) * 60
+        return wall >= budget * minimumPace - paceSlack
     }
 }

@@ -53,13 +53,13 @@ final class Monitor: DeviceActivityMonitor {
         let id = "doomscroll.\(Int(run.start.timeIntervalSince1970))"
         do {
             try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
-            defaults?.set(run.start, forKey: lastNudgedKey)
+            defaults?.set(run.end, forKey: lastNudgedKey)
         } catch {
             // Notifications are off; try again on the next step in case they get turned on.
         }
     }
 
-    static let lastNudgedKey = "doomscrollNudge.lastRunStart"
+    static let lastNudgedKey = "doomscrollNudge.lastNudgedAt"
     static let lastLockedKey = "doomscrollNudge.lastLockedStep"
     static let callbackTimeout: DispatchTimeInterval = .seconds(5)
 }
