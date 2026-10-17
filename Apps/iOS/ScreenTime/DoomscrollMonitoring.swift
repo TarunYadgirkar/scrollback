@@ -2,12 +2,12 @@
 import FamilyControls
 import Foundation
 import ScrollbackCore
+import WidgetKit
 
 /// Asks Screen Time to wake the monitor extension at every step of doomscroll-app use.
 @MainActor
 enum DoomscrollMonitoring {
-    /// Versioned with the ladder, so a new ladder restarts monitoring once instead of waiting for a new pick.
-    static let monitoredKey = "monitoredSelection.v2"
+    static let monitoredKey = SharedContainer.monitoredSelectionKey
 
     /// Restarting resets Screen Time's counters and drops the minutes toward the next step,
     /// so only restart when the picked apps changed or monitoring isn't running.
@@ -45,5 +45,6 @@ enum DoomscrollMonitoring {
         try await SessionStore(url: SessionStore.defaultURL()).appendMilestone(Milestone(at: .now, minutes: 0))
         try center.startMonitoring(.doomscroll, during: wholeDay, events: events)
         SharedContainer.defaults?.set(try JSONEncoder().encode(selection), forKey: monitoredKey)
+        WidgetCenter.shared.reloadTimelines(ofKind: SharedContainer.doomscrollWidgetKind)
     }
 }

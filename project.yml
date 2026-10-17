@@ -52,6 +52,7 @@ targets:
         product: ScrollbackCore
       - target: ScrollbackReport
       - target: ScrollbackMonitor
+      - target: ScrollbackWidget
     scheme:
       testTargets: [ScrollbackiOSUITests]
     info:
@@ -120,6 +121,29 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback.monitor
+        TARGETED_DEVICE_FAMILY: "1"
+  ScrollbackWidget:
+    type: app-extension
+    platform: iOS
+    sources: [Extensions/Widget, Apps/Shared/Theme.swift]
+    dependencies:
+      - package: ScrollbackCore
+        product: ScrollbackCore
+    info:
+      path: Extensions/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Scrollback Widgets
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Extensions/Widget/Widget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.tarunyadgirkar.scrollback]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.scrollback.widget
         TARGETED_DEVICE_FAMILY: "1"
   ScrollbackiOSUITests:
     type: bundle.ui-testing
