@@ -36,7 +36,7 @@ Ask needs Apple Intelligence turned on, on whichever device you use it.
 
 ### iCloud history (once per container)
 
-1. In the developer portal, make sure the iCloud container `iCloud.com.example.scrollback` exists and both app IDs (`…scrollback` and `…scrollback.mac`) have iCloud with CloudKit and that container. Automatic signing usually does this on the next build with `-allowProvisioningUpdates`.
+1. In the developer portal, make sure the iCloud container `iCloud.com.example.scrollback` exists and both app IDs (`…scrollback` and `…scrollback.macos`) have iCloud with CloudKit and that container. Automatic signing usually does this on the next build with `-allowProvisioningUpdates`.
 2. `xcrun cktool save-token --type management`, then `scripts/cloudkit-schema.sh`.
 3. In CloudKit Console, deploy the schema to Production. Every build, USB or TestFlight, uses Production so the Mac and phone see the same database. Production never adds fields on its own, so redo steps 2 and 3 whenever `CloudKit/schema.ckdb` changes, before installing the build that needs it.
 
