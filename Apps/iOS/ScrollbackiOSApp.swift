@@ -74,6 +74,7 @@ struct IOSRoot: View {
             guard access.isApproved, access.hasPickedApps else { return }
             do {
                 try await DoomscrollMonitoring.startIfNeeded(access.selection)
+                monitorError = nil
             } catch {
                 monitorError = "Couldn't start live tracking: \(error.localizedDescription)"
             }
