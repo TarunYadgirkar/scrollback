@@ -1,6 +1,7 @@
 import DeviceActivity
 import Foundation
 import ScrollbackCore
+import WidgetKit
 
 /// Wakes each time doomscroll-app use crosses another 5-minute step and notes when it happened.
 /// The app turns those timestamps back into a live timeline.
@@ -24,6 +25,7 @@ final class Monitor: DeviceActivityMonitor {
             written.signal()
         }
         _ = written.wait(timeout: .now() + Self.writeTimeout)
+        WidgetCenter.shared.reloadTimelines(ofKind: SharedContainer.doomscrollWidgetKind)
     }
 
     static let writeTimeout: DispatchTimeInterval = .seconds(3)

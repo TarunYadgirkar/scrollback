@@ -1,5 +1,6 @@
 import SwiftUI
 import ScrollbackCore
+import WidgetKit
 
 @main
 struct ScrollbackiOSApp: App {
@@ -20,6 +21,8 @@ struct ScrollbackiOSApp: App {
             IOSRoot(model: model)
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     guard phase == .active else { return }
+                    // Free while the app is in front, so the widget catches up with anything the monitor's reloads missed.
+                    WidgetCenter.shared.reloadTimelines(ofKind: SharedContainer.doomscrollWidgetKind)
                     Task {
                         await model.reload()
                         await model.refresh()
