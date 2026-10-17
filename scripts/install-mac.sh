@@ -2,7 +2,8 @@
 # Archives the Mac app, signs it with the team's Developer ID, has Apple notarize it, and installs
 # the stapled copy into /Applications. Notarization uses the Apple ID Xcode is signed in to, the same
 # one scripts/testflight.sh uploads with. Pass --skip-notarize for a quick Developer ID build that
-# skips Apple's check (it still runs locally, just without the notarization ticket).
+# skips Apple's check (it still runs locally, just without the notarization ticket), and
+# --no-install to stop at the finished app in .build/mac-release/export.
 #
 # Full Disk Access is tied to the app's path and signature, so grant it to this copy, not a debug
 # build. The first install after switching signatures needs it granted once more.
@@ -14,7 +15,13 @@ ARCHIVE="$BUILD_DIR/Scrollback.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
 OPTIONS="$BUILD_DIR/ExportOptions.plist"
 NOTARIZE=true
-[[ "${1:-}" == "--skip-notarize" ]] && NOTARIZE=false
+INSTALL=true
+for arg in "$@"; do
+  case "$arg" in
+    --skip-notarize) NOTARIZE=false ;;
+    --no-install) INSTALL=false ;;
+  esac
+done
 
 destination=export
 $NOTARIZE && destination=upload
@@ -56,6 +63,11 @@ fi
 codesign --verify --deep --strict "$EXPORT_DIR/Scrollback.app"
 # Gatekeeper only accepts the notarized copy, so only check that one.
 $NOTARIZE && spctl --assess --type execute --verbose "$EXPORT_DIR/Scrollback.app"
+
+if ! $INSTALL; then
+  echo "Built $EXPORT_DIR/Scrollback.app ($($NOTARIZE && echo "signed and notarized" || echo "signed, not notarized"))."
+  exit 0
+fi
 
 pkill -x Scrollback 2>/dev/null || true
 rm -rf /Applications/Scrollback.app
