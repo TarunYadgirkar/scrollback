@@ -28,7 +28,7 @@ struct BingeList: View {
         VStack(alignment: .leading, spacing: Space.s) {
             SectionLabel(text: "Binges", detail: binges.isEmpty ? nil : "\(binges.count)")
             if binges.isEmpty {
-                Text("No social-app runs over 5 minutes this day.")
+                Text("No binges this day.")
                     .font(TypeScale.label).foregroundStyle(Palette.inkMuted)
             }
             ForEach(binges.reversed()) { binge in

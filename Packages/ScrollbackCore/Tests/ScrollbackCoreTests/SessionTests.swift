@@ -88,6 +88,26 @@ import Testing
         ])
         #expect(binges.isEmpty)
     }
+
+    @Test func ignoresQuickChecksSpreadOverFiveMinutes() {
+        let binges = BingeDetector.binges(in: [
+            session("com.burbn.instagram", .at(21, 0), .at(21, 0, 20)),
+            session("com.atebits.Tweetie2", .at(21, 2, 0), .at(21, 2, 20)),
+            session("com.burbn.instagram", .at(21, 4, 0), .at(21, 4, 20)),
+            session("com.burbn.instagram", .at(21, 5, 30), .at(21, 5, 50)),
+        ])
+        #expect(binges.isEmpty)
+    }
+
+    @Test func countsARunWithThreeMinutesOfUse() {
+        let binges = BingeDetector.binges(in: [
+            session("com.burbn.instagram", .at(21, 0), .at(21, 1, 30)),
+            session("com.atebits.Tweetie2", .at(21, 3, 30), .at(21, 5)),
+        ])
+        #expect(binges.count == 1)
+        #expect(binges[0].span == 5 * 60)
+        #expect(binges[0].activeTime == 3 * 60)
+    }
 }
 
 @Suite struct StoreTests {

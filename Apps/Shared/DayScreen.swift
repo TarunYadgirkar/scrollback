@@ -5,6 +5,8 @@ struct DayScreen: View {
     @Bindable var model: AppModel
     @Environment(\.screenTimeToday) private var screenTimeToday
     @Environment(\.doomscrollApps) private var doomscrollApps
+    /// Bumped after a pull-to-refresh so Screen Time's report is rebuilt and reads fresh numbers.
+    @State private var reportGeneration = 0
 
     var body: some View {
         #if os(macOS)
@@ -41,17 +43,26 @@ struct DayScreen: View {
 
     /// Today on the phone: Screen Time's own report under a fixed header. Touches on the report go to
     /// Screen Time rather than this app, so the page can't scroll from there; the report scrolls itself.
+    /// The page is exactly one screen tall, so it only moves when pulled down from the header to refresh.
     private func liveToday(_ report: AnyView) -> some View {
-        VStack(alignment: .leading, spacing: Space.l) {
-            DeviceSwitcher(model: model)
-            DayHeader(model: model)
-            AskBar(model: model)
-            ActivityHeader(model: model)
-            if let doomscrollApps { doomscrollApps }
-            report
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.l) {
+                DeviceSwitcher(model: model)
+                DayHeader(model: model)
+                AskBar(model: model)
+                ActivityHeader(model: model)
+                if let doomscrollApps { doomscrollApps }
+                report.id(reportGeneration)
+            }
+            .padding(.horizontal, Space.l)
+            .padding(.top, Space.m)
+            .containerRelativeFrame(.vertical, alignment: .top)
         }
-        .padding(.horizontal, Space.l)
-        .padding(.top, Space.m)
+        .scrollBounceBehavior(.always, axes: .vertical)
+        .refreshable { @MainActor in
+            await model.refresh()
+            reportGeneration += 1
+        }
         .animation(Motion.quick, value: model.askState)
     }
 

@@ -92,7 +92,7 @@ public struct ActivityReport: Sendable {
         if binges.isEmpty {
             lines.append("Doomscroll binges: none")
         } else {
-            lines.append("Doomscroll binges (social apps chained, gaps under 2 min):")
+            lines.append("Doomscroll binges (social apps chained, gaps under 2 min, at least 3 min of use):")
             for b in binges {
                 let hops = b.hops.map(AppCatalog.name(for:)).joined(separator: " > ")
                 lines.append("- \(b.device.rawValue) \(Format.spokenTime(b.start)) to \(Format.spokenTime(b.end)), \(Format.duration(b.span)): \(hops)")
