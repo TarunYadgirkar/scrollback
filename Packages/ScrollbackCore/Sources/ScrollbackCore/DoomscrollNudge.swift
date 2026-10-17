@@ -12,9 +12,6 @@ public enum DoomscrollNudge {
     /// so it's skipped. The slack lets the step after a slightly late one through.
     static let minimumPace = 0.8
     static let paceSlack: TimeInterval = 90
-    /// How late a callback can wake the extension and still join the run: a late step stretches the gap
-    /// before it. (If the step after it then looks too early, it's skipped and the next one joins instead.)
-    static let lateSlack: TimeInterval = 180
     /// The callback that triggers a nudge must be about now, so a late duplicate can't nudge about an old run.
     static let freshness: TimeInterval = 120
     /// The first ladder step; a restart (midnight, or monitoring restarted) within this much of the
@@ -60,7 +57,7 @@ public enum DoomscrollNudge {
             } else {
                 let budget = TimeInterval(current.minutes - previous.minutes) * 60
                 minutes += current.minutes - previous.minutes
-                guard wall <= budget * MilestoneTimeline.continuityFactor + lateSlack else {
+                guard wall <= budget * MilestoneTimeline.continuityFactor else {
                     // Used somewhere in the gap; like the timeline, place those minutes right before the step.
                     start = current.at.addingTimeInterval(-budget)
                     break
@@ -101,6 +98,11 @@ public enum DoomscrollNudge {
             if believable(step, after: previous) {
                 kept.append(step)
                 skipped = nil
+            } else if let retimed = retimedLate(previous, before: step, in: kept) {
+                // The previous callback woke late; it was really reached one step before this one.
+                kept[kept.count - 1] = retimed
+                kept.append(step)
+                skipped = nil
             } else if let anchor = skipped, step.minutes > anchor.minutes, believable(step, after: anchor) {
                 kept.append(Step(at: anchor.at, minutes: anchor.minutes, isRestart: true))
                 kept.append(step)
@@ -110,6 +112,17 @@ public enum DoomscrollNudge {
             }
         }
         return kept
+    }
+
+    /// A late callback makes the next step look too early. If moving the previous step back to one step
+    /// before this one still keeps a believable pace after the step before it, it was late, not a phantom.
+    private static func retimedLate(_ previous: Step, before step: Step, in kept: [Step]) -> Step? {
+        guard !previous.isRestart, kept.count >= 2 else { return nil }
+        let earlier = kept[kept.count - 2]
+        let at = step.at.addingTimeInterval(-TimeInterval(step.minutes - previous.minutes) * 60)
+        let retimed = Step(at: at, minutes: previous.minutes, isRestart: false)
+        guard at > earlier.at, believable(retimed, after: earlier) else { return nil }
+        return retimed
     }
 
     private static func believable(_ step: Step, after previous: Step) -> Bool {

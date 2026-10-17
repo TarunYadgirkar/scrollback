@@ -347,7 +347,7 @@ import Testing
     }
 
     @Test func aVeryLateCallbackDoesntSplitTheRun() {
-        // The 10-minute step came 3 minutes late, so 15 looks too early and is skipped; 20 still joins.
+        // The 10-minute step came 3 minutes late, so 15 looks too early; 10 is moved back to when it was reached.
         let milestones = [
             Milestone(at: .at(19, 0), minutes: 0),
             Milestone(at: .at(19, 5), minutes: 5),
@@ -357,6 +357,14 @@ import Testing
         ]
         let run = DoomscrollNudge.due(milestones: milestones, now: .at(19, 20), lastNudged: nil)
         #expect(run == DoomscrollNudge.Run(start: .at(19, 0), end: .at(19, 20), minutes: 20))
+    }
+
+    @Test func fiveOnFiveOffIsntNonstop() {
+        // A step every 10 minutes is only half the time spent scrolling, so no run reaches 20.
+        let milestones = [Milestone(at: .at(19, 0), minutes: 0)] + (0..<4).map {
+            Milestone(at: Date.at(19, 5).addingTimeInterval(TimeInterval($0 * 600)), minutes: ($0 + 1) * 5)
+        }
+        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 35), lastNudged: nil) == nil)
     }
 
     @Test func duplicateCallbacksDontBreakTheRun() {
