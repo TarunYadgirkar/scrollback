@@ -53,5 +53,7 @@ The Mac also saves its history to your own private iCloud database, one record p
 ## Known limits
 
 - iPhone data appears once Apple syncs it to the Mac, usually within minutes but sometimes hours.
+- One Mac per Apple ID. A second Mac writing the same iCloud days would overwrite the first's.
+- An iPhone session that reaches the Mac (via Apple's sync) after a day was saved to iCloud, but that the phone already had over Wi-Fi, can disappear from the phone until the Mac saves that day again on its next refresh.
 - If the phone's iCloud change token expires, the full re-fetch can't see days the Mac deleted outright in the meantime, so those stay on the phone.
 - Away from home, the phone gets history as of the Mac's last iCloud save (every 5 minutes while the Mac is awake). Without iCloud it shows its last synced copy.

@@ -40,6 +40,9 @@ public enum CloudHistory {
     public static let versionKey = "version"
     /// When the Mac packed the day. Anything the phone holds that starts later is newer than the record.
     public static let asOfKey = "asOf"
+    /// The earliest moment the Mac's store reaches back to. A day it only partly covers says
+    /// nothing about the hours before this, so the phone keeps its own rows there.
+    public static let coversFromKey = "coversFrom"
     public static let version: Int64 = 1
     /// CloudKit caps a record at 1 MB; stay well under it.
     public static let maxPayloadBytes = 900_000
