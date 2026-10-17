@@ -281,7 +281,7 @@ import Testing
 
     @Test func eachRunNudgesOnlyOnce() {
         let milestones = steady(from: .at(19, 0), steps: 6)
-        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 30), lastNudged: .at(19, 0)) == nil)
+        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 30), lastNudged: .at(19, 20)) == nil)
     }
 
     @Test func aBreakStartsANewRun() {
@@ -289,7 +289,7 @@ import Testing
         var milestones = steady(from: .at(19, 0), steps: 4)
         milestones.append(Milestone(at: .at(19, 35), minutes: 25))
         #expect(DoomscrollNudge.currentRun(in: milestones) == DoomscrollNudge.Run(start: .at(19, 30), end: .at(19, 35), minutes: 5))
-        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 35), lastNudged: .at(19, 0)) == nil)
+        #expect(DoomscrollNudge.due(milestones: milestones, now: .at(19, 35), lastNudged: .at(19, 20)) == nil)
     }
 
     @Test func firstStepAfterABreakCountsInFull() {
@@ -373,6 +373,41 @@ import Testing
         milestones.append(Milestone(at: .at(19, 30), minutes: 0))
         milestones.append(Milestone(at: .at(19, 35), minutes: 5))
         #expect(DoomscrollNudge.currentRun(in: milestones) == DoomscrollNudge.Run(start: .at(19, 30), end: .at(19, 35), minutes: 5))
+    }
+
+    @Test func aRunWhoseFirstStepLeftTheLookbackIsntNudgedTwice() {
+        // Nudged at 19:20 with the 6:22 step still in view; at 19:25 it's past the lookback.
+        let all = [Milestone(at: .at(0, 0), minutes: 0), Milestone(at: .at(6, 22), minutes: 5)] + steady(from: .at(19, 5), fromMinutes: 10, steps: 4)
+        #expect(DoomscrollNudge.due(milestones: Array(all.dropLast()), now: .at(19, 20), lastNudged: nil) == DoomscrollNudge.Run(start: .at(19, 0), end: .at(19, 20), minutes: 20))
+        let inView = all.filter { $0.at > Date.at(19, 25).addingTimeInterval(-13 * 3600) }
+        #expect(DoomscrollNudge.due(milestones: inView, now: .at(19, 25), lastNudged: .at(19, 20)) == nil)
+    }
+
+    @Test func aLateCallbackFromBeforeARestartIsIgnored() {
+        let milestones = [
+            Milestone(at: .at(23, 45), minutes: 30),
+            Milestone(at: .at(23, 50), minutes: 35),
+            Milestone(at: .at(23, 55), minutes: 40),
+            Milestone(at: .at(0, 0, 5, day: 12), minutes: 0),
+            Milestone(at: .at(0, 0, 30, day: 12), minutes: 40),
+            Milestone(at: .at(0, 5, day: 12), minutes: 5),
+            Milestone(at: .at(0, 10, day: 12), minutes: 10),
+        ]
+        let run = DoomscrollNudge.due(milestones: milestones, now: .at(0, 10, day: 12), lastNudged: nil)
+        #expect(run?.start == .at(23, 45))
+        #expect(run?.minutes == 25)
+    }
+
+    @Test func aPhantomBurstThatMovedTheCountBecomesAnAnchor() {
+        // Screen Time's count jumped from 10 to 25 in a burst; later steps are paced from the burst
+        // and the burst's minutes aren't counted as use.
+        let milestones = steady(from: .at(9, 0), steps: 2) + [
+            Milestone(at: .at(9, 12), minutes: 25),
+            Milestone(at: .at(9, 17), minutes: 30),
+            Milestone(at: .at(9, 22), minutes: 35),
+            Milestone(at: .at(9, 27), minutes: 40),
+        ]
+        #expect(DoomscrollNudge.currentRun(in: milestones) == DoomscrollNudge.Run(start: .at(9, 0), end: .at(9, 27), minutes: 27))
     }
 
     @Test func coarseLateStepsStillNudge() {
