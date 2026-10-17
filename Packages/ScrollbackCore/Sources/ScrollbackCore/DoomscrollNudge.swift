@@ -9,9 +9,12 @@ public enum DoomscrollNudge {
     /// and far enough that the day's restart is there to anchor the first run of the day.
     public static let lookback: TimeInterval = 24 * 3600
     /// A step that arrives much faster than its minutes can't be real use (a phantom or premature callback),
-    /// so it's skipped. The slack absorbs a late callback, which makes the step after it look early.
+    /// so it's skipped. The slack lets the step after a slightly late one through.
     static let minimumPace = 0.8
     static let paceSlack: TimeInterval = 90
+    /// How late a callback can wake the extension and still join the run: a late step stretches the gap
+    /// before it. (If the step after it then looks too early, it's skipped and the next one joins instead.)
+    static let lateSlack: TimeInterval = 180
     /// The callback that triggers a nudge must be about now, so a late duplicate can't nudge about an old run.
     static let freshness: TimeInterval = 120
     /// The first ladder step; a restart (midnight, or monitoring restarted) within this much of the
@@ -57,7 +60,7 @@ public enum DoomscrollNudge {
             } else {
                 let budget = TimeInterval(current.minutes - previous.minutes) * 60
                 minutes += current.minutes - previous.minutes
-                guard wall <= budget * MilestoneTimeline.continuityFactor else {
+                guard wall <= budget * MilestoneTimeline.continuityFactor + lateSlack else {
                     // Used somewhere in the gap; like the timeline, place those minutes right before the step.
                     start = current.at.addingTimeInterval(-budget)
                     break
