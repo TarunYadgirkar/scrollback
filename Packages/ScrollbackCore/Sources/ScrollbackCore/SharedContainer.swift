@@ -17,8 +17,9 @@ public enum SharedContainer {
 
     /// The doomscroll widget's kind, so the monitor and the app can ask it to redraw.
     public static let doomscrollWidgetKind = "DoomscrollToday"
-    /// When the doomscroll widget last redrew. Reloads from the extensions spend a small daily budget,
-    /// so they're spaced at least `widgetReloadSpacing` apart.
+    /// When the monitor last asked the doomscroll widget to redraw. Those reloads spend a small daily budget,
+    /// so they're spaced about `widgetReloadSpacing` apart. Only the monitor writes it: the widget's own
+    /// reloads (app opens, catch-ups) mustn't make the monitor skip a step nothing else will pick up.
     public static let widgetReloadedAtKey = "widgetReloadedAt"
     public static let widgetReloadSpacing: TimeInterval = 15 * 60
 

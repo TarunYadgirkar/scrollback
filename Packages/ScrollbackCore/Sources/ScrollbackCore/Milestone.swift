@@ -62,7 +62,7 @@ public struct DoomscrollToday: Sendable, Equatable {
                 continue
             }
             // More minutes than the run has lasted is a callback left over from before it (yesterday's, say).
-            guard milestone.minutes > runHigh, TimeInterval(milestone.minutes) * 60 <= milestone.at.timeIntervalSince(runStart) + 60 else { continue }
+            guard milestone.minutes > runHigh, TimeInterval(milestone.minutes) * 60 <= milestone.at.timeIntervalSince(runStart) else { continue }
             minutes += milestone.minutes - runHigh
             runHigh = milestone.minutes
             asOf = milestone.at

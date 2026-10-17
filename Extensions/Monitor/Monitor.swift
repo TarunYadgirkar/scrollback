@@ -36,10 +36,12 @@ final class Monitor: DeviceActivityMonitor {
         let last = defaults?.object(forKey: SharedContainer.widgetReloadedAtKey) as? Date ?? .distantPast
         // A reload time in the future means the clock went back; don't let it block reloads until it catches up.
         let elapsed = milestone.at.timeIntervalSince(last)
-        guard milestone.minutes == 0 || elapsed >= SharedContainer.widgetReloadSpacing || elapsed < 0 else { return }
+        guard milestone.minutes == 0 || elapsed >= SharedContainer.widgetReloadSpacing - Self.reloadSlack || elapsed < 0 else { return }
         defaults?.set(milestone.at, forKey: SharedContainer.widgetReloadedAtKey)
         WidgetCenter.shared.reloadTimelines(ofKind: SharedContainer.doomscrollWidgetKind)
     }
 
     static let writeTimeout: DispatchTimeInterval = .seconds(3)
+    /// Steps 15 minutes apart can land a few seconds short of it; don't let that skip every other one.
+    static let reloadSlack: TimeInterval = 60
 }

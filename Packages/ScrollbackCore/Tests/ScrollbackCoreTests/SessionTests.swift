@@ -323,6 +323,7 @@ import Testing
         let today = DoomscrollToday.from([
             Milestone(at: .at(0, 0), minutes: 0),
             Milestone(at: .at(0, 0, 30), minutes: 240),
+            Milestone(at: .at(0, 4, 30), minutes: 5),
             Milestone(at: .at(9, 0), minutes: 10),
             Milestone(at: .at(9, 1), minutes: 5),
             Milestone(at: .at(9, 6), minutes: 15),
