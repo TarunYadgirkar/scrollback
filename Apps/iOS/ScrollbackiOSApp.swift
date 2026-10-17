@@ -1,3 +1,4 @@
+import FamilyControls
 import SwiftUI
 import ScrollbackCore
 
@@ -69,8 +70,8 @@ struct IOSRoot: View {
             }
         }
         .task { await access.followStatus() }
-        // Re-runs when approval arrives after launch, not only when the picked apps change.
-        .task(id: access.isApproved ? access.selection : nil) {
+        // Re-runs when approval arrives after launch, when the picked apps change, and on a retry from Done.
+        .task(id: MonitoringKey(selection: access.isApproved ? access.selection : nil, retries: access.monitoringRetries)) {
             guard access.isApproved, access.hasPickedApps else { return }
             do {
                 try await DoomscrollMonitoring.startIfNeeded(access.selection)
@@ -80,4 +81,9 @@ struct IOSRoot: View {
             }
         }
     }
+}
+
+private struct MonitoringKey: Equatable {
+    let selection: FamilyActivitySelection?
+    let retries: Int
 }

@@ -16,6 +16,11 @@ final class ScreenTimeAccess {
         didSet { Self.save(selection) }
     }
 
+    /// Bumped by Done with unchanged apps, so a live-tracking start that failed earlier gets another try.
+    private(set) var monitoringRetries = 0
+
+    func retryMonitoring() { monitoringRetries += 1 }
+
     var isApproved: Bool { status == .approved }
     var hasPickedApps: Bool { selection.hasPicks }
 
