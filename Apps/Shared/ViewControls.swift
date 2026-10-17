@@ -32,6 +32,11 @@ struct DeviceSwitcher: View {
     /// so don't show a partial number beside it.
     private func subtitle(for device: DeviceKind) -> String {
         if device == .iphone, model.isToday, screenTimeToday != nil { return "Live today" }
+        // Apple's iPhone record reaches the Mac hours late, so say where today's number stops.
+        if device == .iphone, model.isToday, let through = model.iPhoneStaleSince {
+            guard Calendar.current.isDateInToday(through) else { return "Not synced yet" }
+            return Format.duration(model.report.total(on: device)) + " to \(through.shortClock)"
+        }
         return Format.duration(model.report.total(on: device)) + (model.isToday ? " today" : "")
     }
 
