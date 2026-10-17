@@ -130,7 +130,7 @@ final class AppModel {
     static func explain(_ error: any Error) -> String {
         if let message = (error as? LocalizedError)?.errorDescription { return message }
         // Swift errors in Core describe themselves; Cocoa errors are better read through localizedDescription.
-        if !(type(of: error) is NSError.Type), let described = error as? any CustomStringConvertible { return described.description }
+        if !(type(of: error) is NSError.Type) { return String(describing: error) }
         return (error as NSError).localizedDescription
     }
 
