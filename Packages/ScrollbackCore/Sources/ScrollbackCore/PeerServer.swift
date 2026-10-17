@@ -9,6 +9,10 @@ public final class PeerServer: Sendable {
         case stopped
         case waiting
         case synced(at: Date)
+        /// The listener is still up but can't take connections yet, e.g. no network.
+        case paused(String)
+        /// One iPhone request didn't complete; the listener keeps serving.
+        case requestFailed(String)
         case failed(String)
 
         public var description: String {
@@ -16,6 +20,8 @@ public final class PeerServer: Sendable {
             case .stopped: "iPhone sync is off"
             case .waiting: "Waiting for iPhone"
             case .synced(let date): "Synced iPhone at \(date.formatted(date: .omitted, time: .shortened))"
+            case .paused(let message): "iPhone sync is paused: \(message)"
+            case .requestFailed(let message): "Last iPhone sync didn't finish: \(message)"
             case .failed(let message): "iPhone sync stopped: \(message)"
             }
         }
@@ -69,7 +75,7 @@ public final class PeerServer: Sendable {
     private func listenerChanged(to state: NWListener.State) {
         switch state {
         case .ready: onStatusChange(.waiting)
-        case .waiting(let error): onStatusChange(.failed(error.localizedDescription))
+        case .waiting(let error): onStatusChange(.paused(error.localizedDescription))
         case .failed(let error): stop(reporting: .failed(error.localizedDescription))
         default: break
         }
@@ -106,12 +112,12 @@ public final class PeerServer: Sendable {
             let sessions = try await store.sessions(endingAfter: Date(timeIntervalSince1970: request.since))
             let sealed = try PeerResponse.seal(sessions, for: request, key: key)
             guard sealed.count <= PeerProtocol.maxResponseBytes else {
-                return onStatusChange(.failed("History is too large to send in one sync"))
+                return onStatusChange(.requestFailed("History is too large to send in one sync"))
             }
             try await connection.send(PeerFrame.frame(sealed), final: true)
             onStatusChange(.synced(at: .now))
         } catch {
-            onStatusChange(.failed(error.localizedDescription))
+            onStatusChange(.requestFailed(error.localizedDescription))
         }
     }
 
