@@ -11,18 +11,28 @@ struct ReadoutBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
             laneHeaders
+            #if os(macOS)
+            // Hovering swaps what's in this slot but never its height, so the ribbon doesn't jump under the pointer.
+            ZStack(alignment: .leading) { detailView?.transition(.opacity) }
+                .frame(maxWidth: .infinity, minHeight: Self.detailHeight, maxHeight: Self.detailHeight, alignment: .leading)
+                .padding(.leading, RibbonLayout.gutter)
+            #else
             if let detail = detailView {
                 detail
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, RibbonLayout.gutter)
                     .transition(.opacity)
             }
+            #endif
         }
         .padding(.vertical, Space.s)
         .background(Palette.surface)
         .overlay(alignment: .bottom) { Rectangle().fill(Palette.rule).frame(height: 1) }
         .animation(Motion.quick, value: selection)
     }
+
+    /// Room for the two-line form of a session or binge readout.
+    private static let detailHeight: CGFloat = 40
 
     private var laneHeaders: some View {
         GeometryReader { proxy in

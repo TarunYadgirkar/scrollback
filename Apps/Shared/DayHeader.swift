@@ -8,8 +8,9 @@ struct DayHeader: View {
     var body: some View {
         HStack(spacing: Space.m) {
             HStack(spacing: Space.xs) {
-                stepButton("chevron.left", label: "Previous day", shortcut: .leftArrow, enabled: model.canGoBack) { await model.shift(days: -1) }
-                stepButton("chevron.right", label: "Next day", shortcut: .rightArrow, enabled: !model.isToday) { await model.shift(days: 1) }
+                // ⌘[ and ⌘] like Back and Forward elsewhere; bare arrows would steal the caret from Ask.
+                stepButton("chevron.left", label: "Previous day", shortcut: "[", enabled: model.canGoBack) { await model.shift(days: -1) }
+                stepButton("chevron.right", label: "Next day", shortcut: "]", enabled: !model.isToday) { await model.shift(days: 1) }
             }
             Button { isPickingDay = true } label: {
                 HStack(spacing: Space.xs) {
@@ -77,7 +78,7 @@ struct DayHeader: View {
         .buttonStyle(PressScale())
         .foregroundStyle(enabled ? Palette.ink : Palette.inkFaint)
         .disabled(!enabled)
-        .keyboardShortcut(shortcut, modifiers: [])
+        .keyboardShortcut(shortcut, modifiers: .command)
         .accessibilityLabel(label)
     }
 }

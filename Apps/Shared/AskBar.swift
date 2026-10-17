@@ -4,13 +4,25 @@ import ScrollbackCore
 struct AskBar: View {
     @Bindable var model: AppModel
     @FocusState private var isFocused: Bool
+    @State private var availability = Asker.availability
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            field
-            answer
+        if availability != .unsupported {
+            VStack(alignment: .leading, spacing: Space.s) {
+                field
+                answer
+            }
+            // Apple's model can finish downloading or be turned on while the app keeps running.
+            .task(id: availability) {
+                while availability != .available, !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(10))
+                    availability = Asker.availability
+                }
+            }
         }
     }
+
+    private var isAvailable: Bool { availability == .available }
 
     private var field: some View {
         HStack(spacing: Space.s) {
@@ -21,7 +33,7 @@ struct AskBar: View {
                 .focused($isFocused)
                 .submitLabel(.search)
                 .onSubmit { Task { await model.ask() } }
-                .disabled(!Asker.isAvailable)
+                .disabled(!isAvailable)
             if model.askState == .thinking {
                 ProgressView().controlSize(.small)
             } else if !model.question.isEmpty {
@@ -38,10 +50,18 @@ struct AskBar: View {
         .shadow(color: .black.opacity(0.06), radius: 1, y: 1)
         .shadow(color: .black.opacity(isFocused ? 0.1 : 0.04), radius: isFocused ? 8 : 4, y: 2)
         .animation(Motion.quick, value: isFocused)
-        #if os(macOS)
-        .background { Button("") { isFocused = true }.keyboardShortcut("k").hidden() }
-        #endif
+        .task(id: model.wantsAskFocus) {
+            guard model.wantsAskFocus else { return }
+            isFocused = true
+            model.askFocusTaken()
+        }
     }
+
+    #if os(macOS)
+    static let turnOnHint = "Ask needs Apple Intelligence. Turn it on in System Settings › Apple Intelligence & Siri."
+    #else
+    static let turnOnHint = "Ask needs Apple Intelligence. Turn it on in Settings › Apple Intelligence & Siri."
+    #endif
 
     static let suggestions = ["What did I do last night?", "When did I stop scrolling?", "How much social today?"]
 
@@ -72,11 +92,16 @@ struct AskBar: View {
             AnswerCard(text: text, isError: false) { model.dismissAnswer() }
         case .failed(let message):
             AnswerCard(text: message, isError: true) { model.dismissAnswer() }
-        case .idle where Asker.isAvailable && model.question.isEmpty:
+        case .idle where isAvailable && model.question.isEmpty:
             suggestions
-        case .idle where !Asker.isAvailable:
-            Text("Ask needs Apple Intelligence. Turn it on in System Settings, then reopen Scrollback.")
-                .font(TypeScale.label).foregroundStyle(Palette.inkMuted)
+        case .idle where availability == .downloading:
+            HStack(spacing: Space.s) {
+                ProgressView().controlSize(.mini)
+                Text("Apple Intelligence is still downloading. Ask turns on by itself when it's ready.")
+                    .font(TypeScale.label).foregroundStyle(Palette.inkMuted)
+            }
+        case .idle where availability == .turnedOff:
+            Text(Self.turnOnHint).font(TypeScale.label).foregroundStyle(Palette.inkMuted)
         default:
             EmptyView()
         }
