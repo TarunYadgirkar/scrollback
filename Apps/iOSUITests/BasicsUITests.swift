@@ -9,7 +9,8 @@ final class BasicsUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         // Argument-domain defaults override the remembered choices, so every test starts on the iPhone list.
-        app.launchArguments = ["-viewMode", "list", "-device", "iphone"]
+        // -uiTesting keeps the notification prompt from covering the screen mid-test.
+        app.launchArguments = ["-viewMode", "list", "-device", "iphone", "-uiTesting"]
         app.launch()
         XCTAssertTrue(activityTitle.waitForExistence(timeout: Self.timeout), "Main screen never appeared (stuck on setup?)")
         snap("launched")
