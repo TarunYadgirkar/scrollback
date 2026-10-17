@@ -27,6 +27,8 @@ struct DayScreen: View {
             } else {
                 StretchList(model: model) { top }
             }
+        case .timeline where showsPhoneCards:
+            StretchList(model: model) { top }
         case .timeline:
             VStack(alignment: .leading, spacing: 0) {
                 top
@@ -81,7 +83,17 @@ struct DayScreen: View {
     /// recap there too, so it keeps only the tabs, the day and the view toggle. Ask stays on the list.
     private var isCompactTimeline: Bool {
         #if os(iOS)
-        model.viewMode == .timeline
+        model.viewMode == .timeline && !showsPhoneCards
+        #else
+        false
+        #endif
+    }
+
+    /// The phone's own day as it happens: the list belongs to Screen Time's report, and live doomscroll
+    /// steps read badly as ribbon bars, so its timeline shows them as stretch cards like the Mac's list.
+    private var showsPhoneCards: Bool {
+        #if os(iOS)
+        model.device == .iphone && model.isToday
         #else
         false
         #endif
