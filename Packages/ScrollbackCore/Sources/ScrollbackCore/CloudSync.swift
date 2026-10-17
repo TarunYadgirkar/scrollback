@@ -37,6 +37,10 @@ enum CloudAccess {
         try await store.setCloudState(accountKey, Data(user.utf8))
     }
 
+    static func isTransient(_ error: CKError) -> Bool {
+        [.networkFailure, .networkUnavailable, .serviceUnavailable, .requestRateLimited, .zoneBusy].contains(error.code)
+    }
+
     static func isMissingZone(_ error: any Error) -> Bool {
         guard let error = error as? CKError else { return false }
         return error.code == .zoneNotFound || error.code == .userDeletedZone
@@ -205,18 +209,27 @@ public struct CloudHistoryDownloader: Sendable {
                 return added == 0 ? nil : added
             }
 
-            // Anything that stops a day applying is thrown before the token is saved, so the
-            // same changes come back next time instead of that day being skipped for good.
+            // A day that a later app version could read, or a short outage, is thrown before the
+            // token is saved so the same changes come back. A day this build can never read is
+            // skipped, so it can't hold back every day after it.
             for (id, result) in changes.modificationResultsByID {
                 guard let day = CloudDay(recordName: id.recordName) else { continue }
-                let record = try result.get().record
+                let modification: CKDatabase.RecordZoneChange.Modification
+                switch result {
+                case .success(let value): modification = value
+                case .failure(let error as CKError) where CloudAccess.isTransient(error): throw error
+                case .failure: continue
+                }
+                let record = modification.record
                 let version = (record.encryptedValues[CloudHistory.versionKey] as? NSNumber)?.int64Value ?? 0
                 guard let payload = record.encryptedValues[CloudHistory.payloadKey] as? Data else { continue }
                 let sessions: [Session]
                 do {
                     sessions = try CloudHistory.unpack(payload, version: version)
-                } catch {
+                } catch CloudHistory.Failure.newerVersion {
                     throw CloudSyncError.needsUpdate
+                } catch {
+                    continue
                 }
                 added += try await store.replaceCloudDay(day, with: sessions)
             }
