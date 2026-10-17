@@ -14,7 +14,7 @@ macOS already records which app is in front, for this Mac and for any iPhone tha
 
 Each file is a SEGB v2 segment of protobuf records: app bundle ID, start or end, timestamp, and how the app was opened (Home Screen, App Switcher, notification…). `Packages/ScrollbackCore` decodes these, pairs them into sessions, and copies them into its own SQLite store. Apple deletes Biome records after about three weeks, but Scrollback's copy keeps them indefinitely.
 
-A **binge** is a run of social apps where each hop happens within 2 minutes and the whole run lasts at least 5 minutes.
+A **binge** is a run of social apps where each hop happens within 2 minutes and the whole run lasts at least 5 minutes, with at least 3 minutes of it spent in the apps.
 
 ## Pieces
 
