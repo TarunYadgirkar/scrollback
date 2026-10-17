@@ -17,6 +17,10 @@ public enum SharedContainer {
 
     /// The doomscroll widget's kind, so the monitor and the app can ask it to redraw.
     public static let doomscrollWidgetKind = "DoomscrollToday"
+    /// When the doomscroll widget last redrew. Reloads from the extensions spend a small daily budget,
+    /// so they're spaced at least `widgetReloadSpacing` apart.
+    public static let widgetReloadedAtKey = "widgetReloadedAt"
+    public static let widgetReloadSpacing: TimeInterval = 15 * 60
 
     /// Builds before the App Group kept the database in the app's own container. Move it once.
     static func moveLegacyStore(from legacy: URL, to shared: URL) {

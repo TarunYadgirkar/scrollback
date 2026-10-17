@@ -332,6 +332,16 @@ import Testing
         #expect(today.asOf == .at(9, 6))
     }
 
+    @Test func keepsStepsAfterALateMidnightMarker() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(0, 1, 30), minutes: 0),
+            Milestone(at: .at(0, 5), minutes: 5),
+            Milestone(at: .at(0, 10), minutes: 10),
+        ], now: .at(1, 0))
+
+        #expect(today.minutes == 10)
+    }
+
     @Test func countsCoarseLateStepsInFull() {
         let today = DoomscrollToday.from([
             Milestone(at: .at(0, 0), minutes: 0),
