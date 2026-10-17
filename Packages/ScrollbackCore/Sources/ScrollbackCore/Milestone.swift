@@ -55,9 +55,9 @@ public struct DoomscrollToday: Sendable, Equatable {
         var asOf: Date?
         for milestone in milestones.sorted(by: { $0.at < $1.at }) where milestone.at >= dayStart && milestone.at <= now {
             if milestone.minutes == 0 {
-                // A 0 with nothing counted yet (a late midnight marker, or the app's restart followed by
-                // the monitor's own) keeps the earlier start, so steps right after it aren't mistaken for leftovers.
-                if runHigh > 0 { runStart = milestone.at }
+                // A 0 just after the run began with nothing counted (a late midnight marker, or the app's restart
+                // followed by the monitor's own) keeps the earlier start, so steps right after it aren't taken for leftovers.
+                if runHigh > 0 || milestone.at.timeIntervalSince(runStart) > Self.markerGrace { runStart = milestone.at }
                 runHigh = 0
                 continue
             }
@@ -69,4 +69,7 @@ public struct DoomscrollToday: Sendable, Equatable {
         }
         return DoomscrollToday(minutes: minutes, asOf: asOf)
     }
+
+    /// How late a 0 marker can land after the moment it stands for.
+    static let markerGrace: TimeInterval = 5 * 60
 }

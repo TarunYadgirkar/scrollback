@@ -21,7 +21,8 @@ final class Monitor: DeviceActivityMonitor {
         let milestone = Milestone(at: .now, minutes: minutes)
         let written = DispatchSemaphore(value: 0)
         Task {
-            try? await store.appendMilestone(milestone)
+            // Signal only a saved row; a failed write runs out the wait like a slow one.
+            guard (try? await store.appendMilestone(milestone)) != nil else { return }
             written.signal()
         }
         // A write that hasn't landed would only redraw the old total and hold off the next real reload.

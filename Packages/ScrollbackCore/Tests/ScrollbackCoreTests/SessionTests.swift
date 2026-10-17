@@ -343,6 +343,17 @@ import Testing
         #expect(today.minutes == 10)
     }
 
+    @Test func measuresLeftoversFromAnIdleRestart() {
+        let today = DoomscrollToday.from([
+            Milestone(at: .at(0, 0), minutes: 0),
+            Milestone(at: .at(12, 0), minutes: 0),
+            Milestone(at: .at(12, 1), minutes: 240),
+            Milestone(at: .at(12, 6), minutes: 5),
+        ], now: .at(13, 0))
+
+        #expect(today.minutes == 5)
+    }
+
     @Test func countsCoarseLateStepsInFull() {
         let today = DoomscrollToday.from([
             Milestone(at: .at(0, 0), minutes: 0),
