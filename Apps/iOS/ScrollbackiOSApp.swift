@@ -11,8 +11,11 @@ struct ScrollbackiOSApp: App {
 
     init() {
         do {
-            let store = try SessionStore(url: SessionStore.defaultURL())
-            _model = State(initialValue: AppModel(store: store, provider: PeerProvider()))
+            if Demo.isOn {
+                _model = State(initialValue: AppModel(store: try Demo.makeStore(), provider: DemoProvider()))
+            } else {
+                _model = State(initialValue: AppModel(store: try SessionStore(url: SessionStore.defaultURL()), provider: PeerProvider()))
+            }
         } catch {
             fatalError("Couldn't open Scrollback's database: \(error)")
         }
@@ -39,12 +42,12 @@ struct IOSRoot: View {
     @State private var access = ScreenTimeAccess()
     @State private var monitorError: String?
 
-    // The simulator can't grant Screen Time, so let it reach the synced history.
+    // The simulator can't grant Screen Time, so let it reach the synced history. Demo data needs no setup.
     private var needsScreenTimeSetup: Bool {
         #if targetEnvironment(simulator)
         false
         #else
-        !access.isApproved || !access.hasPickedApps
+        !Demo.isOn && (!access.isApproved || !access.hasPickedApps)
         #endif
     }
 
@@ -57,6 +60,9 @@ struct IOSRoot: View {
                 .background(Palette.surface)
             } else if model.status == .needsSetup(.notPaired), !model.hasData {
                 PairingView()
+            } else if Demo.isOn {
+                // Screen Time's own report and app picker show real usage, so the demo leaves them out.
+                DayScreen(model: model)
             } else {
                 DayScreen(model: model)
                     .environment(\.screenTimeToday, AnyView(ScreenTimeTodayCard()))
