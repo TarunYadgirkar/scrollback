@@ -54,8 +54,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     override init() {
         Self.carryOverPreferences()
         do {
-            let store = try SessionStore(url: SessionStore.defaultURL())
-            model = AppModel(store: store, provider: BiomeProvider())
+            if Demo.isOn {
+                model = AppModel(store: try Demo.makeStore(), provider: DemoProvider())
+            } else {
+                model = AppModel(store: try SessionStore(url: SessionStore.defaultURL()), provider: BiomeProvider())
+            }
         } catch {
             fatalError("Couldn't open Scrollback's database at \(SessionStore.defaultURL().path): \(error)")
         }
@@ -63,8 +66,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let cloudHost = CloudHost(store: model.store, status: cloudStatus)
+        if let folder = DemoScreenshots.folder {
+            Task { await DemoScreenshots.renderAndQuit(model: model, into: folder) }
+            return
+        }
+        // Demo data stays in this process: no iCloud upload and nothing served to the iPhone.
+        let cloudHost = Demo.isOn ? nil : CloudHost(store: model.store, status: cloudStatus)
         self.cloudHost = cloudHost
+        if Demo.isOn { cloudStatus.text = "Demo data isn't synced" }
         if !Self.launchedAsLoginItem { windowRequest.wantsMain = true }
         refreshLoop = Task { [model, windowRequest, cloudHost] in
             // Show what's already saved while Biome is read, which can take a while.
@@ -75,10 +84,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // Even a quiet login launch needs the window when there's nothing it can show without setup.
                 if isFirst, model.setupNeed == .fullDiskAccess, !model.hasData { windowRequest.wantsMain = true }
                 isFirst = false
-                cloudHost.uploadInBackground()
+                cloudHost?.uploadInBackground()
                 try? await Task.sleep(for: Self.refreshInterval)
             }
         }
+        guard !Demo.isOn else { return }
         peerHost = PeerHost(store: model.store, status: peerStatus)
         peerHost?.start()
     }
