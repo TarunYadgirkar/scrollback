@@ -10,6 +10,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/config.sh"
+require_team
 BUILD_DIR="$ROOT/.build/mac-release"
 ARCHIVE="$BUILD_DIR/Scrollback.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
@@ -35,7 +37,7 @@ cat > "$OPTIONS" <<PLIST
 <dict>
   <key>method</key><string>developer-id</string>
   <key>destination</key><string>$destination</string>
-  <key>teamID</key><string>5AKJYZ7USP</string>
+  <key>teamID</key><string>$TEAM_ID</string>
   <key>signingStyle</key><string>automatic</string>
 </dict>
 </plist>
@@ -44,7 +46,8 @@ PLIST
 cd "$ROOT"
 xcodegen generate --quiet
 xcodebuild -project Scrollback.xcodeproj -scheme ScrollbackMac -configuration Release \
-  -destination 'generic/platform=macOS' -archivePath "$ARCHIVE" -allowProvisioningUpdates -quiet archive
+  -destination 'generic/platform=macOS' -archivePath "$ARCHIVE" -allowProvisioningUpdates -quiet \
+  "${CONFIG_OVERRIDES[@]}" archive
 xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$OPTIONS" \
   -exportPath "$EXPORT_DIR" -allowProvisioningUpdates
 

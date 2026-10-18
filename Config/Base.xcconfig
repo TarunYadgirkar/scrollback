@@ -1,0 +1,10 @@
+// Shared by every target. Your own team and bundle ID prefix go in Config/Secrets.xcconfig
+// (gitignored): copy Config/Secrets.example.xcconfig there and fill it in.
+DEVELOPMENT_TEAM =
+BUNDLE_ID_PREFIX = com.example
+
+#include? "Secrets.xcconfig"
+
+SCROLLBACK_BUNDLE_ID = $(BUNDLE_ID_PREFIX).scrollback
+SCROLLBACK_ICLOUD_CONTAINER = iCloud.$(SCROLLBACK_BUNDLE_ID)
+SCROLLBACK_APP_GROUP = group.$(SCROLLBACK_BUNDLE_ID)

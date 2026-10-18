@@ -30,5 +30,7 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Scrollback sends your usage history to the Scrollback app on your iPhone.</string>
+	<key>ScrollbackICloudContainer</key>
+	<string>$(SCROLLBACK_ICLOUD_CONTAINER)</string>
 </dict>
 </plist>
