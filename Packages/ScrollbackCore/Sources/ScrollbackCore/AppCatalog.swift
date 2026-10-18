@@ -59,7 +59,6 @@ public enum AppCatalog {
         "com.apple.mail": Entry(name: "Mail", category: .messaging),
         "com.apple.mobilephone": Entry(name: "Phone", category: .messaging),
         "com.apple.facetime": Entry(name: "FaceTime", category: .messaging),
-        "com.partiful.partiful": Entry(name: "Partiful", category: .messaging),
         "com.anthropic.claude": Entry(name: "Claude", category: .work),
         "com.anthropic.claudefordesktop": Entry(name: "Claude", category: .work),
         "com.openai.chat": Entry(name: "ChatGPT", category: .work),
@@ -80,9 +79,6 @@ public enum AppCatalog {
         "com.openai.codex": Entry(name: "Codex", category: .work),
         "com.apple.Preview": Entry(name: "Preview", category: .other),
         "scrollback.doomscroll": Entry(name: "Doomscroll apps", category: .social),
-        "com.example.scrollback": Entry(name: "Scrollback", category: .other),
-        "com.example.scrollback.mac": Entry(name: "Scrollback", category: .other),
-        "com.example.scrollback.macos": Entry(name: "Scrollback", category: .other),
         "com.apple.mobilesafari": Entry(name: "Safari", category: .other),
         "com.apple.Safari": Entry(name: "Safari", category: .other),
         "com.google.Chrome": Entry(name: "Chrome", category: .other),
@@ -97,7 +93,6 @@ public enum AppCatalog {
         "com.apple.camera": Entry(name: "Camera", category: .other),
         "com.apple.mobileslideshow": Entry(name: "Photos", category: .other),
         "com.apple.Maps": Entry(name: "Maps", category: .other),
-        "com.robinhood.release.Robinhood": Entry(name: "Robinhood", category: .other),
     ]
 
     public static func isSystemSurface(_ bundleID: String) -> Bool {
@@ -108,8 +103,12 @@ public enum AppCatalog {
         known[bundleID]?.category ?? .other
     }
 
+    /// Scrollback's own apps, whatever bundle ID prefix they were built with (see Config/Base.xcconfig).
+    static let ownSuffixes = [".scrollback", ".scrollback.mac", ".scrollback.macos"]
+
     public static func name(for bundleID: String) -> String {
         if let entry = known[bundleID] { return entry.name }
+        if ownSuffixes.contains(where: bundleID.hasSuffix) { return "Scrollback" }
         let last = bundleID.split(separator: ".").last.map(String.init) ?? bundleID
         return last.prefix(1).uppercased() + last.dropFirst()
     }
