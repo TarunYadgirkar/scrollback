@@ -33,7 +33,8 @@ public struct CloudDay: Sendable, Hashable, Comparable {
 /// How a day's sessions are packed into a CloudKit record. The packed bytes go in the
 /// record's encrypted values, so only this person's devices can read them, not Apple and not us.
 public enum CloudHistory {
-    public static let containerID = "iCloud.com.example.scrollback"
+    /// From the app's Info.plist, which gets it from Config/Base.xcconfig.
+    public static let containerID = BuildConfig.value(for: "ScrollbackICloudContainer")
     public static let zoneName = "History"
     public static let recordType = "HistoryDay"
     public static let payloadKey = "payload"

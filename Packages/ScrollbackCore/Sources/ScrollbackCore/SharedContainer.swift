@@ -3,13 +3,14 @@ import Foundation
 /// The App Group shared by the iPhone app and its Screen Time extensions, so the
 /// monitor extension can write usage events the app reads.
 public enum SharedContainer {
-    public static let appGroupID = "group.com.example.scrollback"
+    /// From the target's Info.plist, which gets it from Config/Base.xcconfig. Nil in targets without the App Group.
+    public static let appGroupID = BuildConfig.value(for: "ScrollbackAppGroup")
 
     public static var url: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
+        appGroupID.flatMap { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) }
     }
 
-    public static var defaults: UserDefaults? { UserDefaults(suiteName: appGroupID) }
+    public static var defaults: UserDefaults? { appGroupID.flatMap { UserDefaults(suiteName: $0) } }
 
     /// Where the app keeps the doomscroll apps it's monitoring. Versioned with the ladder, so a new ladder
     /// restarts monitoring once instead of waiting for a new pick. The widgets read it to tell "not set up" from "0m".

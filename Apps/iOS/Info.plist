@@ -28,6 +28,10 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Scrollback looks for your Mac on this Wi-Fi to fetch your usage history.</string>
+	<key>ScrollbackAppGroup</key>
+	<string>$(SCROLLBACK_APP_GROUP)</string>
+	<key>ScrollbackICloudContainer</key>
+	<string>$(SCROLLBACK_ICLOUD_CONTAINER)</string>
 	<key>ScrollbackPeerKey</key>
 	<string>$(SCROLLBACK_PEER_KEY)</string>
 	<key>UILaunchScreen</key>

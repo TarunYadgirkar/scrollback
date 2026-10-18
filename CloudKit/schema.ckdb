@@ -1,4 +1,4 @@
-// Schema for iCloud.com.example.scrollback. Load it with scripts/cloudkit-schema.sh,
+// Schema for the iCloud.<prefix>.scrollback container. Load it with scripts/cloudkit-schema.sh,
 // then deploy it to Production in CloudKit Console. Every build uses Production, which never
 // adds fields by itself: any new record key must be added here and deployed before it ships.
 DEFINE SCHEMA

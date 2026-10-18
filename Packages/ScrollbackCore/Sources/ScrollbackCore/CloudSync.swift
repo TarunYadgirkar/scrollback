@@ -26,7 +26,10 @@ enum CloudAccess {
     static let accountKey = "account"
     static let zoneID = CKRecordZone.ID(zoneName: CloudHistory.zoneName, ownerName: CKCurrentUserDefaultName)
 
-    static func container() -> CKContainer { CKContainer(identifier: CloudHistory.containerID) }
+    static func container() throws -> CKContainer {
+        guard let id = CloudHistory.containerID else { throw CloudSyncError.accountUnavailable("This build has no iCloud container set.") }
+        return CKContainer(identifier: id)
+    }
 
     /// Throws unless iCloud is usable, and starts over when the signed-in account changed,
     /// since what the old account holds says nothing about the new one.
@@ -80,7 +83,7 @@ public struct CloudHistoryUploader: Sendable {
     /// Returns how many days were sent or removed. Days that fail stay dirty for the next run,
     /// and don't hold back the days after them; the first such error is thrown at the end.
     public func upload(from store: SessionStore) async throws -> Int {
-        let container = CloudAccess.container()
+        let container = try CloudAccess.container()
         let database = container.privateCloudDatabase
         try await CloudAccess.checkAccount(container, store: store)
         if try await isPaused(store) { throw CloudSyncError.deletedInSettings }
@@ -277,7 +280,7 @@ public struct CloudHistoryDownloader: Sendable {
     }
 
     private func fetch(into store: SessionStore) async throws -> Int? {
-        let container = CloudAccess.container()
+        let container = try CloudAccess.container()
         let database = container.privateCloudDatabase
         try await CloudAccess.checkAccount(container, store: store)
 
