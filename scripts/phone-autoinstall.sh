@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Installs a launch agent that checks every hour and reinstalls the iPhone app
-# when it's plugged in and the current build is more than 5 days old.
+# Installs a launch agent that checks every hour and reinstalls the iPhone app when it's plugged in
+# and the code changed since the last install, or the build nears expiry (see install-phone.sh --if-stale).
 # Remove with: launchctl bootout gui/$(id -u)/<prefix>.scrollback.phone-install
 set -euo pipefail
 
