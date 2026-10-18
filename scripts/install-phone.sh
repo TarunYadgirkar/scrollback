@@ -5,6 +5,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/config.sh"
 STAMP="$HOME/Library/Application Support/Scrollback/phone-installed-at"
 STALE_AFTER_SECONDS=$((300 * 24 * 3600))
 BUILD_DIR="$ROOT/.build/ios"
@@ -25,6 +26,7 @@ if [[ -z "$device" ]]; then
   exit 1
 fi
 
+require_team
 key=$("$ROOT/scripts/peer-key.sh")
 
 cd "$ROOT"
@@ -33,7 +35,7 @@ xcodegen generate --quiet
 # A fresh build number each install makes iOS re-index the app's Shortcuts actions.
 SCROLLBACK_PEER_KEY="$key" xcodebuild -project Scrollback.xcodeproj -scheme ScrollbackiOS -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath "$BUILD_DIR" -allowProvisioningUpdates -quiet \
-  CURRENT_PROJECT_VERSION="$(date +%Y%m%d%H%M)" build
+  CURRENT_PROJECT_VERSION="$(date +%Y%m%d%H%M)" "${CONFIG_OVERRIDES[@]}" build
 
 app="$BUILD_DIR/Build/Products/Release-iphoneos/Scrollback.app"
 xcrun devicectl device install app --device "$device" "$app"

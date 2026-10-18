@@ -27,5 +27,7 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).Monitor</string>
 	</dict>
+	<key>ScrollbackAppGroup</key>
+	<string>$(SCROLLBACK_APP_GROUP)</string>
 </dict>
 </plist>

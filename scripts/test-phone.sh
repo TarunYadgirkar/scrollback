@@ -4,6 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/config.sh"
 RESULT="$ROOT/.build/ui-test.xcresult"
 SHOTS="$ROOT/assets/generated/ui-test"
 
@@ -13,6 +14,7 @@ if [[ -z "$device" ]]; then
   exit 1
 fi
 
+require_team
 key=$("$ROOT/scripts/peer-key.sh")
 cd "$ROOT"
 xcodegen generate --quiet
@@ -20,7 +22,7 @@ rm -rf "$RESULT" "$SHOTS"
 status=0
 SCROLLBACK_PEER_KEY="$key" xcodebuild -project Scrollback.xcodeproj -scheme ScrollbackiOS -configuration Release \
   -destination "id=$device" -derivedDataPath "$ROOT/.build/ios" -resultBundlePath "$RESULT" -allowProvisioningUpdates \
-  CURRENT_PROJECT_VERSION="$(date +%Y%m%d%H%M)" test "$@" || status=$?
+  CURRENT_PROJECT_VERSION="$(date +%Y%m%d%H%M)" "${CONFIG_OVERRIDES[@]}" test "$@" || status=$?
 
 mkdir -p "$SHOTS"
 xcrun xcresulttool export attachments --path "$RESULT" --output-path "$SHOTS" >/dev/null || true

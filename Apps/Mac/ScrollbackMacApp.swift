@@ -99,8 +99,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The app's ID changed from …scrollback.mac to …scrollback.macos for iCloud. Its database and
     /// sync key live in Application Support either way; this brings the few preferences along once.
     private static func carryOverPreferences() {
+        guard let id = Bundle.main.bundleIdentifier, id.hasSuffix(".macos") else { return }
         let defaults = UserDefaults.standard
-        guard let old = defaults.persistentDomain(forName: "com.tarunyadgirkar.scrollback.mac") else { return }
+        guard let old = defaults.persistentDomain(forName: String(id.dropLast(2))) else { return }
         for (key, value) in old where defaults.object(forKey: key) == nil {
             defaults.set(value, forKey: key)
         }
