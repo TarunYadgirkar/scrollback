@@ -58,6 +58,9 @@ struct StretchList<Header: View>: View {
         guard model.device == .iphone, model.isToday else {
             return "No app use longer than a few seconds on this day."
         }
+        if model.isTrackingLive {
+            return "No doomscroll app has been open 5 minutes yet today. Other apps arrive from your Mac later."
+        }
         return "Your iPhone's activity reaches your Mac through Apple's sync, which can run a few hours behind."
     }
 

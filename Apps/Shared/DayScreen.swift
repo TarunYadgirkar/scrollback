@@ -75,7 +75,9 @@ struct DayScreen: View {
                 #if os(iOS)
                 // The Mac keeps these in the inspector, so the timeline under this fixed header keeps its room.
                 RecapStrip(report: model.report, device: model.device)
-                if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
+                if let lag = model.iPhoneLag {
+                    FreshnessNote(through: lag, isLive: model.isTrackingLive, macStopped: model.macStoppedSending)
+                }
                 #endif
             }
             ActivityHeader(model: model)

@@ -37,6 +37,11 @@ struct DeviceSwitcher: View {
             guard Calendar.current.isDateInToday(through) else { return "Not synced yet" }
             return Format.duration(model.report.total(on: device)) + " to \(through.shortClock)"
         }
+        // On the phone, a Mac that stopped reading looks just like an unused one; say when it last had anything.
+        if device == .mac, model.isToday, model.macStoppedSending, let through = model.dataThrough[.mac],
+           !Calendar.current.isDateInToday(through) {
+            return "Nothing since \(through.formatted(Date.FormatStyle().weekday(.abbreviated)))"
+        }
         return Format.duration(model.report.total(on: device)) + (model.isToday ? " today" : "")
     }
 

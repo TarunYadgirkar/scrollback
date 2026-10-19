@@ -131,6 +131,14 @@ extension Date {
             .lowercased()
     }
 
+    /// 7:35pm today, "yesterday 7:35pm", or "Fri 7:35pm" further back.
+    var dayAndClock: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(self) { return shortClock }
+        if calendar.isDateInYesterday(self) { return "yesterday \(shortClock)" }
+        return formatted(Date.FormatStyle().weekday(.abbreviated).locale(Locale(identifier: "en_US_POSIX"))) + " \(shortClock)"
+    }
+
     /// 7:35:14pm
     var preciseClock: String {
         formatted(Date.FormatStyle().hour(.defaultDigits(amPM: .abbreviated)).minute().second().locale(Locale(identifier: "en_US_POSIX")))
