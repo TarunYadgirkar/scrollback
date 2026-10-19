@@ -11,7 +11,9 @@ struct Inspector: View {
                 RecapStrip(report: model.report, device: model.device)
                 if let lag = model.iPhoneLag { FreshnessNote(through: lag, isLive: model.isTrackingLive) }
                 BingeList(model: model)
-                TopApps(device: model.device, apps: model.report.apps(on: model.device))
+                TopApps(device: model.device, apps: model.report.apps(on: model.device)) {
+                    withAnimation(Motion.quick) { model.viewMode = .apps }
+                }
             }
             .padding(Space.l)
         }
@@ -75,6 +77,7 @@ struct TopApps: View {
 
     let device: DeviceKind
     let apps: [ActivityReport.AppTotal]
+    var onSeeAll: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
@@ -100,6 +103,12 @@ struct TopApps: View {
                     .frame(height: 3)
                 }
                 .accessibilityElement(children: .combine)
+            }
+            if let onSeeAll, !apps.isEmpty {
+                Button("See all \(apps.count) apps", action: onSeeAll)
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(Palette.work)
+                    .font(TypeScale.label)
             }
         }
     }

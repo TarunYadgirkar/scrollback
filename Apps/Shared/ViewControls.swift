@@ -2,11 +2,25 @@ import SwiftUI
 import ScrollbackCore
 
 enum ViewMode: String, CaseIterable, Identifiable {
-    case list, timeline
+    case list, timeline, apps
 
     var id: String { rawValue }
-    var label: String { self == .list ? "List" : "Timeline" }
-    var symbol: String { self == .list ? "list.bullet" : "chart.bar.xaxis" }
+
+    var label: String {
+        switch self {
+        case .list: "List"
+        case .timeline: "Timeline"
+        case .apps: "Apps"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .list: "list.bullet"
+        case .timeline: "chart.bar.xaxis"
+        case .apps: "square.grid.2x2"
+        }
+    }
 }
 
 extension DeviceKind {
@@ -76,7 +90,7 @@ struct DeviceSwitcher: View {
     }
 }
 
-/// "Activity" with the list/timeline choice; the color key only matters on the timeline.
+/// "Activity" with the list/timeline/apps choice; the color key only matters on the timeline.
 struct ActivityHeader: View {
     @Bindable var model: AppModel
 

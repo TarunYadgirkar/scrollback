@@ -12,6 +12,7 @@ struct ScrollbackCommands: Commands {
         CommandGroup(before: .toolbar) {
             viewToggle(.list, key: "1")
             viewToggle(.timeline, key: "2")
+            viewToggle(.apps, key: "3")
             Divider()
             deviceToggle(.iphone, key: "1")
             deviceToggle(.mac, key: "2")

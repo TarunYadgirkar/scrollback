@@ -6,6 +6,7 @@ import SwiftUI
 struct ScrollbackReportExtension: DeviceActivityReportExtension {
     var body: some DeviceActivityReportScene {
         TodayScene { TodayView(report: $0) }
+        AppsScene { LiveAppsView(summary: $0) }
     }
 }
 
@@ -20,6 +21,16 @@ nonisolated struct TodayScene: DeviceActivityReportScene {
 
     func makeConfiguration(representing data: DeviceActivityResults<DeviceActivityData>) async -> TodayReport {
         TodayReport(summary: await LiveSummary.build(from: data), hours: await HourByHour.build(from: data))
+    }
+}
+
+/// Every app used today with its total, for the app's "Apps" view.
+nonisolated struct AppsScene: DeviceActivityReportScene {
+    let context: DeviceActivityReport.Context = .apps
+    let content: (LiveSummary) -> LiveAppsView
+
+    func makeConfiguration(representing data: DeviceActivityResults<DeviceActivityData>) async -> LiveSummary {
+        await LiveSummary.build(from: data)
     }
 }
 
