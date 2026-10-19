@@ -22,6 +22,7 @@ enum DemoScreenshots {
     static let shots = [
         Shot(name: "demo-mac-app-timeline", device: .iphone, mode: .timeline, appearance: .aqua, selectsLatestBinge: true),
         Shot(name: "demo-mac-app-dark", device: .mac, mode: .list, appearance: .darkAqua),
+        Shot(name: "demo-mac-app-apps", device: .iphone, mode: .apps, appearance: .aqua),
     ]
 
     /// Only with demo data, so a render can never capture someone's real history.

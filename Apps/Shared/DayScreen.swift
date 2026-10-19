@@ -4,6 +4,7 @@ import ScrollbackCore
 struct DayScreen: View {
     @Bindable var model: AppModel
     @Environment(\.screenTimeToday) private var screenTimeToday
+    @Environment(\.screenTimeApps) private var screenTimeApps
     @Environment(\.doomscrollApps) private var doomscrollApps
     /// Bumped after a pull-to-refresh so Screen Time's report is rebuilt and reads fresh numbers.
     @State private var reportGeneration = 0
@@ -29,6 +30,12 @@ struct DayScreen: View {
             } else {
                 StretchList(model: model) { top }
             }
+        case .apps:
+            if model.device == .iphone, model.isToday, let screenTimeApps {
+                liveToday(screenTimeApps)
+            } else {
+                AppTotalsList(model: model) { top }
+            }
         case .timeline where showsPhoneCards:
             StretchList(model: model) { top }
         case .timeline:
@@ -41,7 +48,7 @@ struct DayScreen: View {
         }
     }
 
-    /// Today on the phone: Screen Time's own report under a fixed header. Touches on the report go to
+    /// Today on the phone: one of Screen Time's own reports under a fixed header. Touches on the report go to
     /// Screen Time rather than this app, so the page can't scroll from there; the report scrolls itself.
     /// The page is exactly one screen tall, so it only moves when pulled down from the header to refresh.
     private func liveToday(_ report: AnyView) -> some View {
@@ -168,6 +175,8 @@ private struct TimelinePane: View {
 extension EnvironmentValues {
     /// The phone's live Screen Time report for today, when access is granted. Nil on the Mac.
     @Entry var screenTimeToday: AnyView?
+    /// The same report listing every app used today with its total. Nil on the Mac.
+    @Entry var screenTimeApps: AnyView?
     /// The phone's picked doomscroll apps and the control to change them. Nil on the Mac.
     @Entry var doomscrollApps: AnyView?
 }

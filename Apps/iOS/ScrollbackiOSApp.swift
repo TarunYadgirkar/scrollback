@@ -66,6 +66,7 @@ struct IOSRoot: View {
             } else {
                 DayScreen(model: model)
                     .environment(\.screenTimeToday, AnyView(ScreenTimeTodayCard()))
+                    .environment(\.screenTimeApps, AnyView(ScreenTimeTodayCard(context: .apps)))
                     .environment(\.doomscrollApps, AnyView(DoomscrollAppsControl(access: access)))
             }
         }
