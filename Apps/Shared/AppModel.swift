@@ -107,6 +107,15 @@ final class AppModel {
         return through
     }
 
+    /// Apple's iPhone record normally reaches the Mac 10 to 17 hours late. Past a day, the Mac
+    /// itself has stopped reading (quit, or lost Full Disk Access) rather than Apple running behind.
+    static let macStoppedAfter: TimeInterval = 24 * 60 * 60
+
+    var macStoppedSending: Bool {
+        guard let through = dataThrough[.iphone] else { return false }
+        return Date.now.timeIntervalSince(through) > Self.macStoppedAfter
+    }
+
     func refresh() async {
         guard status != .syncing else { return }
         status = .syncing
